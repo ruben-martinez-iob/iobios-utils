@@ -1,0 +1,575 @@
+/* Estilos inyectados por ioBios Extension en AppSheet */
+
+/* "Add All" buttons */
+#iobios-add-all-btn,
+#iobios-add-all-ts-btn {
+  cursor: pointer;
+  transition: background-color 150ms ease, opacity 150ms ease;
+}
+
+#iobios-add-all-btn:hover,
+#iobios-add-all-ts-btn:hover {
+  filter: brightness(0.88);
+}
+
+#iobios-add-all-btn:active,
+#iobios-add-all-ts-btn:active {
+  filter: brightness(0.76);
+}
+
+/* ── Pending badge ────────────────────────────────────────────────────────── */
+
+.iobios-btn-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  transform: translate(50%, -50%);
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background: #d32f2f;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  pointer-events: none;
+  z-index: 10;
+  box-sizing: border-box;
+}
+
+/* ── Overlay ──────────────────────────────────────────────────────────────── */
+
+#iobios-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1299;
+}
+
+#iobios-overlay.open {
+  display: block;
+}
+
+/* ── Panel ────────────────────────────────────────────────────────────────── */
+
+#iobios-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 65%;
+  max-width: 824px;
+  background: #fff;
+  z-index: 1300;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 225ms cubic-bezier(0, 0, 0.2, 1);
+  font-family: Roboto, sans-serif;
+}
+
+#iobios-panel.open {
+  transform: none;
+}
+
+/* ── Panel header ─────────────────────────────────────────────────────────── */
+
+#iobios-panel-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e0e0e0;
+  gap: 12px;
+}
+
+#iobios-panel-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: #555;
+  padding: 4px 8px;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+#iobios-panel-close:hover {
+  background: #f5f5f5;
+}
+
+#iobios-panel-title {
+  flex: 1;
+  font-weight: 600;
+  font-size: 16px;
+  color: #212121;
+}
+
+#iobios-panel-actions {
+  display: flex;
+  gap: 8px;
+}
+
+#iobios-panel-cancel {
+  background: none;
+  border: 1px solid #bdbdbd;
+  border-radius: 4px;
+  padding: 6px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #424242;
+}
+
+#iobios-panel-cancel:hover {
+  background: #f5f5f5;
+}
+
+#iobios-panel-save {
+  background: #1a73e8;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #fff;
+  font-weight: 500;
+}
+
+#iobios-panel-save:hover {
+  background: #1557b0;
+}
+
+#iobios-panel-save:disabled {
+  background: #bdbdbd;
+  cursor: default;
+}
+
+/* ── Panel body ───────────────────────────────────────────────────────────── */
+
+#iobios-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+/* ── Range form ───────────────────────────────────────────────────────────── */
+
+.iobios-range-form {
+  margin-bottom: 20px;
+}
+
+.iobios-range-inputs {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.iobios-month-nav {
+  background: none;
+  border: 1px solid #bdbdbd;
+  border-radius: 4px;
+  width: 28px;
+  height: 28px;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  color: #424242;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+
+.iobios-month-nav:hover {
+  background: #f5f5f5;
+  border-color: #757575;
+}
+
+.iobios-range-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.iobios-range-field label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #616161;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.iobios-range-field input[type="date"] {
+  border: 1px solid #bdbdbd;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 14px;
+  color: #212121;
+  background: #fff;
+  cursor: pointer;
+}
+
+.iobios-range-field input[type="date"]:focus {
+  outline: none;
+  border-color: #1a73e8;
+}
+
+/* ── Preview ──────────────────────────────────────────────────────────────── */
+
+.iobios-preview-summary {
+  font-size: 13px;
+  color: #616161;
+  margin: 0 0 12px;
+}
+
+.iobios-loading,
+.iobios-preview-empty {
+  font-size: 13px;
+  color: #9e9e9e;
+  margin: 0;
+}
+
+.iobios-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.iobios-preview-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+/* ── Estado: a agregar (verde) ── */
+.iobios-status-new {
+  background: #e8f5e9;
+}
+
+/* ── Estado: ya existe (gris) ── */
+.iobios-status-existing {
+  background: #eeeeee;
+}
+
+/* ── Estado: fin de semana / vacaciones (azul claro) ── */
+.iobios-status-weekend,
+.iobios-status-vacation {
+  background: #e3f2fd;
+}
+
+/* ── Estado: festivo (morado claro) ── */
+.iobios-status-holiday {
+  background: #f3e5f5;
+}
+
+/* ── Estado: a ignorar / excluido manualmente (amarillo) ── */
+.iobios-status-excluded {
+  background: #fffde7;
+}
+
+/* ── Estado: a borrar (rojo) ── */
+.iobios-status-delete {
+  background: #ffebee;
+}
+
+/* Compatibilidad con clase antigua */
+.iobios-status-dup {
+  background: #eeeeee;
+}
+
+/* ── Textos: gris oscuro en todos los estados ── */
+.iobios-status-existing .iobios-preview-date,
+.iobios-status-existing .iobios-preview-detail,
+.iobios-status-weekend .iobios-preview-date,
+.iobios-status-vacation .iobios-preview-date,
+.iobios-status-holiday .iobios-preview-date,
+.iobios-status-excluded .iobios-preview-date,
+.iobios-status-excluded .iobios-preview-detail,
+.iobios-status-delete .iobios-preview-date,
+.iobios-status-delete .iobios-preview-detail {
+  color: #424242;
+}
+
+.iobios-badge-delete {
+  background: #ffcdd2;
+  color: #c62828;
+  border-color: #ef9a9a;
+}
+
+.iobios-toggle-undelete {
+  background: #ffcdd2;
+  color: #c62828;
+}
+
+.iobios-toggle-undelete:hover {
+  background: #ef9a9a;
+}
+
+.iobios-toggle-delete {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.iobios-toggle-delete:hover {
+  background: #ffe0b2;
+}
+
+.iobios-toggle-btn {
+  margin-left: auto;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.iobios-toggle-include {
+  background: #c8e6c9;
+  color: #2e7d32;
+}
+
+.iobios-toggle-include:hover {
+  background: #a5d6a7;
+}
+
+.iobios-toggle-exclude {
+  background: #ffcdd2;
+  color: #c62828;
+}
+
+.iobios-toggle-exclude:hover {
+  background: #ef9a9a;
+}
+
+.iobios-preview-date {
+  min-width: 130px;
+  font-weight: 500;
+  color: #212121;
+}
+
+.iobios-status-dup .iobios-preview-date,
+.iobios-status-dup .iobios-preview-detail {
+  color: #424242;
+}
+
+.iobios-preview-detail {
+  flex: 1;
+  color: #424242;
+}
+
+.iobios-hours-inputs {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.iobios-time-input {
+  width: 95px;
+  padding: 2px 4px;
+  font-size: 12px;
+  border: 1px solid #c5e1a5;
+  border-radius: 4px;
+  background: #f9fbe7;
+  color: #33691e;
+}
+
+.iobios-hours-sep {
+  color: #888;
+  font-size: 12px;
+  padding: 0 2px;
+}
+
+.iobios-time-input-ro {
+  background: #f5f5f5;
+  border-color: #e0e0e0;
+  color: #757575;
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+.iobios-alloc-hours-input {
+  width: 50px;
+  padding: 2px 4px;
+  font-size: 12px;
+  border: 1px solid #c5e1a5;
+  border-radius: 4px;
+  background: #f9fbe7;
+  color: #33691e;
+  text-align: left;
+  flex-shrink: 0;
+}
+
+.iobios-alloc-project-input {
+  flex: 0 1 220px;
+  padding: 2px 6px;
+  font-size: 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  text-align: left;
+  min-width: 80px;
+}
+
+.iobios-alloc-spacer {
+  flex: 1;
+}
+
+.iobios-alloc-hours-ro {
+  background: #f5f5f5;
+  border-color: #e0e0e0;
+  color: #757575;
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+.iobios-preview-badge {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: #fff3e0;
+  color: #e65100;
+  border: 1px solid #ffcc80;
+  white-space: nowrap;
+}
+
+/* Badge: Fin de semana (azul, texto negro) */
+.iobios-badge-weekend {
+  background: #90caf9;
+  color: #111;
+  border-color: #64b5f6;
+}
+
+/* Badge: Ausencia/Vacaciones (naranja, texto negro) */
+.iobios-badge-vacation {
+  background: #ffb74d;
+  color: #111;
+  border-color: #fb8c00;
+}
+
+/* Badge: Festivo (morado, texto negro) */
+.iobios-badge-holiday {
+  background: #ce93d8;
+  color: #111;
+  border-color: #ab47bc;
+}
+
+/* ── Toast ────────────────────────────────────────────────────────────────── */
+
+#iobios-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(16px);
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: Roboto, sans-serif;
+  color: #fff;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 250ms ease, transform 250ms ease;
+  z-index: 1400;
+  white-space: nowrap;
+}
+
+#iobios-toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+#iobios-toast.iobios-toast-success {
+  background: #2e7d32;
+}
+
+#iobios-toast.iobios-toast-error {
+  background: #c62828;
+}
+
+/* ── Today highlight ──────────────────────────────────────────────────────── */
+
+.iobios-today {
+  border-left: 3px solid #1a73e8;
+  padding-left: 7px;
+}
+
+/* ── Hours summary footer ─────────────────────────────────────────────────── */
+
+.iobios-preview-footer {
+  margin-bottom: 12px;
+}
+
+.iobios-hours-summary {
+  font-size: 12px;
+  color: #757575;
+  margin: 4px 0 0;
+}
+
+.iobios-hours-summary.iobios-hours-warning {
+  color: #e65100;
+  font-weight: 500;
+}
+
+/* ── Per-day hours label (timesheets) ─────────────────────────────────────── */
+
+.iobios-day-hours-label {
+  font-size: 11px;
+  color: #9e9e9e;
+  white-space: nowrap;
+  margin-left: 4px;
+}
+
+.iobios-day-hours-label.iobios-day-hours-warning {
+  color: #e65100;
+  font-weight: 600;
+}
+
+.iobios-day-hours-label.iobios-day-hours-excess {
+  color: #c62828;
+  font-weight: 600;
+}
+
+/* ── Edit mode buttons ────────────────────────────────────────────────────── */
+
+.iobios-toggle-edit {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.iobios-toggle-edit:hover {
+  background: #bbdefb;
+}
+
+.iobios-save-edit {
+  background: #e8f5e9;
+  color: #2e7d32;
+  font-weight: bold;
+}
+
+.iobios-save-edit:hover {
+  background: #c8e6c9;
+}
+
+.iobios-cancel-edit {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.iobios-cancel-edit:hover {
+  background: #ffcdd2;
+}

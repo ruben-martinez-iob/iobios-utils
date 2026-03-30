@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ioBios Extension — Configuración</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>ioBios Extension</h1>
+    <p class="subtitle">Configuración de la extensión</p>
+
+    <nav class="tabs" role="tablist">
+      <button role="tab" class="tab active" data-tab="general">General</button>
+      <button role="tab" class="tab" data-tab="time-allocations">Time Allocations</button>
+      <button role="tab" class="tab" data-tab="time-sheets">Time Sheets</button>
+      <button role="tab" class="tab" data-tab="festivos" id="tab-btn-festivos" hidden>Festivos</button>
+    </nav>
+
+    <form id="options-form">
+
+      <!-- Tab: General -->
+      <div id="tab-general" role="tabpanel" class="tabpanel active">
+        <div class="field">
+          <label class="toggle-label">
+            <span>Extensión activa</span>
+            <input type="checkbox" id="enabled" name="enabled" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="field">
+          <label for="target-url">URL de la aplicación</label>
+          <input
+            type="text"
+            id="target-url"
+            name="targetUrl"
+            value="https://www.appsheet.com/start/6f5178ea-4877-4f23-9749-721b993b406a"
+            readonly
+          />
+          <small>El dominio donde se inyecta la extensión.</small>
+        </div>
+        <div class="field">
+          <label class="toggle-label">
+            <span>Omitir fines de semana</span>
+            <input type="checkbox" id="skip-weekends" name="skipWeekends" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="field">
+          <label class="toggle-label">
+            <span>Excluir festivos</span>
+            <input type="checkbox" id="skip-holidays" name="skipHolidays" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="field">
+          <label class="toggle-label">
+            <span>Excluir vacaciones</span>
+            <input type="checkbox" id="skip-vacations" name="skipVacations" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="field">
+          <label for="max-hours">Máximo de horas por día</label>
+          <input type="number" id="max-hours" name="maxHoursPerDay" min="1" max="24" step="0.5" />
+          <small>Límite de la suma total de horas de todas las plantillas.</small>
+        </div>
+
+        <hr class="section-sep" />
+
+        <section class="tab-section">
+          <h2>Jornada de verano</h2>
+          <p class="section-desc">Periodo con horario reducido. Solo se usa el día y el mes; el año se ignora.</p>
+          <div class="field">
+            <label for="summer-hours">Horas de jornada</label>
+            <input type="number" id="summer-hours" min="1" max="24" step="0.5" />
+          </div>
+          <div class="summer-dates">
+            <div class="field">
+              <label for="summer-start">Inicio</label>
+              <input type="date" id="summer-start" />
+            </div>
+            <div class="field">
+              <label for="summer-end">Fin</label>
+              <input type="date" id="summer-end" />
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Tab: Time Allocations -->
+      <div id="tab-time-allocations" role="tabpanel" class="tabpanel">
+
+        <section class="tab-section">
+          <h2>Plantillas de imputación</h2>
+          <p class="section-desc">Cada plantilla genera un registro por día del rango seleccionado.</p>
+          <div id="allocations-list"></div>
+          <button type="button" id="add-allocation" class="btn-add">+ Añadir plantilla</button>
+          <p id="alloc-total" class="derived-info"></p>
+        </section>
+
+      </div>
+
+      <!-- Tab: Time Sheets -->
+      <div id="tab-time-sheets" role="tabpanel" class="tabpanel">
+        <section class="tab-section">
+          <h2>Horario de fichaje</h2>
+          <p class="section-desc">
+            Horarios de entrada y salida para cada franja de trabajo.
+            Se asume una pausa para comer entre ambas franjas.
+          </p>
+
+          <div class="timesheet-grid">
+            <div class="ts-period">
+              <span class="ts-label">Franja 1</span>
+              <div class="ts-inputs">
+                <div class="field">
+                  <label for="p1-clock-in">Entrada</label>
+                  <input type="time" id="p1-clock-in" />
+                </div>
+                <span class="ts-separator">→</span>
+                <div class="field">
+                  <label for="p1-clock-out">Salida</label>
+                  <input type="time" id="p1-clock-out" />
+                </div>
+              </div>
+            </div>
+
+            <div class="ts-period">
+              <span class="ts-label">Franja 2</span>
+              <div class="ts-inputs">
+                <div class="field">
+                  <label for="p2-clock-in">Entrada</label>
+                  <input type="time" id="p2-clock-in" />
+                </div>
+                <span class="ts-separator">→</span>
+                <div class="field">
+                  <label for="p2-clock-out">Salida</label>
+                  <input type="time" id="p2-clock-out" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p id="derived-info" class="derived-info"></p>
+          <p id="summer-ts-info" class="summer-ts-info"></p>
+        </section>
+      </div>
+
+      <!-- Tab: Festivos -->
+      <div id="tab-festivos" role="tabpanel" class="tabpanel"></div>
+
+      <div class="form-footer">
+        <button type="submit" id="save-btn">Guardar</button>
+        <span id="status-msg" class="status-msg" aria-live="polite"></span>
+      </div>
+
+    </form>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

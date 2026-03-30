@@ -1,0 +1,452 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  color: #333;
+  background: #f9f9f9;
+  padding: 32px 0;
+}
+
+.container {
+  max-width: 520px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 8px;
+  padding: 28px 32px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+h1 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  color: #777;
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  border-bottom: 2px solid #e8e8e8;
+  margin-bottom: 24px;
+  gap: 0;
+}
+
+.tab {
+  background: none;
+  border: none;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #777;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tab:hover {
+  color: #333;
+}
+
+.tab.active {
+  color: #1a73e8;
+  border-bottom-color: #1a73e8;
+}
+
+/* ── Tab panels ───────────────────────────────────────────────────────────── */
+.tabpanel {
+  display: none;
+}
+
+.tabpanel.active {
+  display: block;
+}
+
+/* ── Sections inside tabs ─────────────────────────────────────────────────── */
+.tab-section {
+  margin-bottom: 28px;
+}
+
+.tab-section:last-child {
+  margin-bottom: 0;
+}
+
+.tab-section h2 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.section-desc {
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 14px;
+}
+
+/* ── Fields ───────────────────────────────────────────────────────────────── */
+.field {
+  margin-bottom: 16px;
+}
+
+.field label:not(.toggle-label) {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.field input[type="text"],
+.field input[type="number"],
+.field input[type="time"],
+.field input[type="date"] {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #333;
+  background: #fff;
+  transition: border-color 0.15s;
+}
+
+.field input[type="text"]:focus,
+.field input[type="number"]:focus,
+.field input[type="time"]:focus,
+.field input[type="date"]:focus {
+  outline: none;
+  border-color: #1a73e8;
+}
+
+.field input[type="text"][readonly] {
+  background: #f4f4f4;
+  color: #555;
+  cursor: default;
+}
+
+.field small {
+  display: block;
+  margin-top: 4px;
+  color: #999;
+  font-size: 12px;
+}
+
+/* ── Toggle switch ────────────────────────────────────────────────────────── */
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-label input[type="checkbox"] {
+  display: none;
+}
+
+.toggle-slider {
+  display: inline-block;
+  position: relative;
+  width: 40px;
+  height: 22px;
+  background: #ccc;
+  border-radius: 11px;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.toggle-slider::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+
+.toggle-label input:checked + .toggle-slider {
+  background: #1a73e8;
+}
+
+.toggle-label input:checked + .toggle-slider::after {
+  transform: translateX(18px);
+}
+
+/* ── Allocation rows ──────────────────────────────────────────────────────── */
+#allocations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.allocation-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.project-autocomplete {
+  flex: 1;
+  position: relative;
+}
+
+.alloc-project {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #333;
+  transition: border-color 0.15s;
+}
+
+.alloc-project:focus {
+  outline: none;
+  border-color: #1a73e8;
+}
+
+.project-suggestions {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 100;
+  list-style: none;
+  padding: 4px 0;
+}
+
+.project-suggestion-item {
+  padding: 7px 10px;
+  font-size: 13px;
+  color: #333;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.project-suggestion-item:hover {
+  background: #f0f6ff;
+  color: #1a73e8;
+}
+
+.alloc-hours {
+  width: 72px;
+  padding: 7px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #333;
+  text-align: right;
+  transition: border-color 0.15s;
+}
+
+.alloc-hours:focus {
+  outline: none;
+  border-color: #1a73e8;
+}
+
+.remove-row {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  color: #999;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.remove-row:hover {
+  color: #c62828;
+  border-color: #c62828;
+  background: #fff5f5;
+}
+
+/* ── Add button ───────────────────────────────────────────────────────────── */
+.btn-add {
+  background: none;
+  border: 1px dashed #aaa;
+  border-radius: 4px;
+  padding: 7px 14px;
+  font-size: 13px;
+  color: #555;
+  cursor: pointer;
+  width: 100%;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.btn-add:hover {
+  border-color: #1a73e8;
+  color: #1a73e8;
+}
+
+/* ── Warning ──────────────────────────────────────────────────────────────── */
+.warning {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 4px;
+  padding: 6px 10px;
+}
+
+/* ── Time Sheets grid ─────────────────────────────────────────────────────── */
+.timesheet-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ts-period {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ts-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ts-inputs {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.ts-inputs .field {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.ts-inputs .field input[type="time"] {
+  width: 100%;
+}
+
+.ts-separator {
+  font-size: 16px;
+  color: #aaa;
+  padding-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.derived-info {
+  margin-top: 16px;
+  font-size: 13px;
+  color: #555;
+  background: #f4f8ff;
+  border: 1px solid #d0e3ff;
+  border-radius: 4px;
+  padding: 8px 12px;
+  min-height: 34px;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.derived-info.over-limit {
+  color: #c62828;
+  background: #fff5f5;
+  border-color: #f5c6cb;
+}
+
+/* ── Summer schedule info (Time Sheets tab) ───────────────────────────────── */
+.summer-ts-info {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #1558b0;
+  background: #e8f0fe;
+  border: 1px solid #c5d8fc;
+  border-radius: 4px;
+  padding: 7px 10px;
+  min-height: 0;
+}
+
+.summer-ts-info:empty {
+  display: none;
+}
+
+/* ── Section separator ────────────────────────────────────────────────────── */
+.section-sep {
+  border: none;
+  border-top: 1px solid #eee;
+  margin: 8px 0 20px;
+}
+
+/* ── Summer dates grid ────────────────────────────────────────────────────── */
+.summer-dates {
+  display: flex;
+  gap: 16px;
+}
+
+.summer-dates .field {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+/* ── Form footer ──────────────────────────────────────────────────────────── */
+.form-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+}
+
+button[type="submit"] {
+  padding: 9px 20px;
+  background: #1a73e8;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+button[type="submit"]:hover {
+  background: #1558b0;
+}
+
+.status-msg {
+  font-size: 13px;
+}
+
+.status-msg.success {
+  color: #2e7d32;
+}
+
+.status-msg.error {
+  color: #c62828;
+}

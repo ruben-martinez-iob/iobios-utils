@@ -1,0 +1,7 @@
+.claude/settings.local.json
+.tasks
+
+node_modules/
+dist/
+*.DS_Store
+Thumbs.db

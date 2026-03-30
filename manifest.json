@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "ioBios Extension",
+  "version": "0.1.0",
+  "description": "Extensión ioBios para AppSheet",
+  "permissions": ["storage", "activeTab", "tabs"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.appsheet.com/start/6f5178ea-4877-4f23-9749-721b993b406a*"],
+      "js": ["content/appsheet-session.js"],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://www.appsheet.com/start/6f5178ea-4877-4f23-9749-721b993b406a*"],
+      "js": [
+        "content/shared.js",
+        "content/timeallocations-db.js",
+        "content/timesheets-db.js",
+        "content/absences-db.js",
+        "content/timeallocations.js",
+        "content/timesheets.js",
+        "content/badge.js",
+        "content/content.js"
+      ],
+      "css": ["content/content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_page": "options/options.html",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
