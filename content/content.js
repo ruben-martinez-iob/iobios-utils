@@ -53,7 +53,7 @@
     if (view === 'timeallocations') {
       const tsBtn = document.getElementById(BTN_TS);
       if (tsBtn) tsBtn.remove();
-      injected = injectButton(BTN_TA, 'Add All', async () => {
+      injected = injectButton(BTN_TA, 'All', async () => {
         const cfg = await window.__iobios.getConfig();
         window.__iobios.openPanel(
           'Add All — Time Allocations',
@@ -67,7 +67,7 @@
     } else if (view === 'timesheets') {
       const taBtn = document.getElementById(BTN_TA);
       if (taBtn) taBtn.remove();
-      injected = injectButton(BTN_TS, 'Add All', async () => {
+      injected = injectButton(BTN_TS, 'All', async () => {
         const cfg = await window.__iobios.getConfig();
         window.__iobios.openPanel(
           'Add All — Time Sheets',
@@ -132,6 +132,17 @@
         .then(projects => sendResponse({ projects: projects.map(p => p.name) }))
         .catch(() => sendResponse({ projects: [] }));
       return true; // keep message channel open for async response
+    }
+    if (msg.action === 'getHolidays') {
+      window.__iobios.getHolidays()
+        .then(holidays => sendResponse({
+          holidays: holidays.map(h => ({
+            date: window.__iobios.toDateInputValue(h.date),
+            name: h.name,
+          })),
+        }))
+        .catch(() => sendResponse({ holidays: [] }));
+      return true;
     }
   });
 

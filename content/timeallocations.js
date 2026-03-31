@@ -17,20 +17,23 @@
   // ── Override state (reset each time the panel opens) ─────────────────────
   let _manualInclude   = new Set(); // dateStr — force-include naturally excluded days
   let _manualExclude   = new Set(); // "dateStr::project" — granular exclusion
-  let _markedForDelete = new Map(); // dateStr → [allocation, ...]
+  let _markedForDelete = new Set(); // allocation object references
   let _customHours     = new Map(); // "dateStr::project" → hours
   let _customProjects  = new Map(); // "dateStr::project" → overridden project name
   let _editingRows     = new Set(); // "dateStr::project" keys for rows in edit mode
+  let _manualRows      = new Map(); // dateStr → [{uid, project, hours}]
+  let _uidCounter      = 0;
 
   // ── Panel body ───────────────────────────────────────────────────────────
 
   function renderTimeAllocationsBody(container, config) {
     _manualInclude   = new Set();
     _manualExclude   = new Set();
-    _markedForDelete = new Map();
+    _markedForDelete = new Set();
     _customHours     = new Map();
     _customProjects  = new Map();
     _editingRows     = new Set();
+    _manualRows      = new Map();
 
     const { from, to } = window.__iobios.defaultDateRange();
 
@@ -110,7 +113,7 @@
       const todayKey    = new Date().toDateString();
       let insertRecords = 0;
       let insertDays    = 0;
-      let deleteDays    = 0;
+      let deleteCount   = 0;
       let hoursToInsert = 0;
       let hoursExisting = 0;
       let workingDays   = 0;
@@ -123,13 +126,13 @@
         const isHoliday  = holidaySet.has(key);
         const isVacation = vacationSet.has(key);
         const forced     = _manualInclude.has(key);
-        const toDelete   = _markedForDelete.has(key);
 
         const isFuture = date > new Date();
         const naturallyExcluded = (config.rules.skipWeekends && isWeekend) || isHoliday || isVacation || isFuture;
         const daySkipped = naturallyExcluded && !forced;
 
         const dayAllocs = existingMap.get(key) || [];
+        const manualRowsForDay = _manualRows.get(key) || [];
         const existingProjects = new Set(dayAllocs.map(a => a.project));
 
         // Config projects not yet in DB for this day
@@ -137,6 +140,7 @@
 
         const hasExisting        = dayAllocs.length > 0;
         const totalExistingHours = dayAllocs.reduce((sum, a) => {
+          if (_markedForDelete.has(a)) return sum;
           const ek = `${key}::${a.project}`;
           return sum + (_editingRows.has(ek) && _customHours.has(ek)
             ? _customHours.get(ek)
@@ -149,7 +153,7 @@
         const dayMaxH  = (inSummer && config.summerSchedule?.hours) ? config.summerSchedule.hours : maxH;
 
         if (!naturallyExcluded) workingDays++;
-        if (hasExisting && !toDelete) hoursExisting += totalExistingHours;
+        if (hasExisting) hoursExisting += totalExistingHours;
 
         // Whether missing rows should be shown at all for this day
         const showMissingRows = !daySkipped && !isDayFull;
@@ -160,24 +164,17 @@
               .filter(a => !_manualExclude.has(`${key}::${a.project}`))
               .reduce((sum, a) => sum + Number(_customHours.get(`${key}::${a.project}`) ?? a.hours), 0)
           : 0;
-        const totalDayH = (toDelete ? 0 : totalExistingHours) + totalNewH;
+        const totalManualH = manualRowsForDay.reduce((s, r) => s + Number(r.hours || 0), 0);
+        const totalDayH = totalExistingHours + totalNewH + totalManualH;
         const dayLabelClass = totalDayH > dayMaxH ? ' iobios-day-hours-excess'
           : totalDayH < dayMaxH * 0.99 ? ' iobios-day-hours-warning'
           : '';
         const dayLabelHtml = totalDayH > 0
           ? `<span class="iobios-day-hours-label${dayLabelClass}" data-day="${key}">${fmtH(totalDayH)}</span>`
           : '';
+        const addRowBtnHtml = `<button class="iobios-toggle-btn iobios-add-manual-row" data-date="${key}" title="Añadir imputación">+</button>`;
 
-        if (toDelete) {
-          deleteDays++;
-          dayAllocs.forEach((alloc, i) => {
-            html += `<div class="iobios-preview-row iobios-status-delete${key === todayKey && i === 0 ? ' iobios-today' : ''}">
-              <span class="iobios-preview-date${i > 0 ? ' iobios-date-continuation' : ''}">${i === 0 ? window.__iobios.formatDayLabel(date) : ''}</span>
-              <span class="iobios-preview-detail">${alloc.project} — ${alloc.hours}</span>
-              ${i === 0 ? `<span class="iobios-preview-badge iobios-badge-delete">Borrar</span><button class="iobios-toggle-btn iobios-toggle-undelete" data-date="${key}" title="Cancelar borrado">✕</button>` : ''}
-            </div>`;
-          });
-        } else if (hasExisting || (showMissingRows && missingAllocs.length > 0)) {
+        if (hasExisting || (showMissingRows && missingAllocs.length > 0) || manualRowsForDay.length > 0) {
           let firstRow = true;
 
           const insertableCount = showMissingRows
@@ -185,20 +182,30 @@
             : 0;
           if (insertableCount > 0) insertDays++;
 
-          // Existing rows (gray, read-only or edit mode)
+          // Existing rows (deleted, edit, or read mode)
           dayAllocs.forEach(alloc => {
-            const isEditing = _editingRows.has(`${key}::${alloc.project}`);
             const editKey   = `${key}::${alloc.project}`;
+            const isDeleted = _markedForDelete.has(alloc);
+            const isEditing = !isDeleted && _editingRows.has(editKey);
             const existingH = (isEditing && _customHours.has(editKey))
               ? _customHours.get(editKey)
               : parseHoursFromHHMMSS(alloc.hours);
-            if (isEditing) {
+            if (isDeleted) {
+              deleteCount++;
+              html += `<div class="iobios-preview-row iobios-status-delete${key === todayKey && firstRow ? ' iobios-today' : ''}">
+                <span class="iobios-preview-date${!firstRow ? ' iobios-date-continuation' : ''}">${firstRow ? window.__iobios.formatDayLabel(date) : ''}</span>
+                <span class="iobios-preview-detail">${alloc.project} — ${alloc.hours}</span>
+                <span class="iobios-preview-badge iobios-badge-delete">Borrar</span>
+                ${firstRow ? addRowBtnHtml : ''}
+                <button class="iobios-toggle-btn iobios-toggle-undelete" data-date="${key}" data-project="${alloc.project}" title="Cancelar borrado">✕</button>
+              </div>`;
+            } else if (isEditing) {
               html += `<div class="iobios-preview-row iobios-status-existing${key === todayKey && firstRow ? ' iobios-today' : ''}">
                 <span class="iobios-preview-date${!firstRow ? ' iobios-date-continuation' : ''}">${firstRow ? window.__iobios.formatDayLabel(date) : ''}</span>
                 <input type="text" class="iobios-alloc-project-input iobios-alloc-hours-ro" value="${alloc.project}" disabled>
                 <input type="number" class="iobios-alloc-hours-input" data-date="${key}" data-project="${alloc.project}" value="${existingH}" min="0.5" max="24" step="0.5">
                 <span class="iobios-alloc-spacer"></span>
-                ${firstRow ? dayLabelHtml : ''}
+                ${firstRow ? dayLabelHtml + addRowBtnHtml : ''}
                 <button class="iobios-toggle-btn iobios-save-edit" data-date="${key}" data-project="${alloc.project}" title="Guardar">✓</button>
                 <button class="iobios-toggle-btn iobios-cancel-edit" data-date="${key}" data-project="${alloc.project}" title="Cancelar">✕</button>
               </div>`;
@@ -208,9 +215,9 @@
                 <input type="text" class="iobios-alloc-project-input iobios-alloc-hours-ro" value="${alloc.project}" disabled>
                 <input type="number" class="iobios-alloc-hours-input iobios-alloc-hours-ro" value="${existingH}" disabled>
                 <span class="iobios-alloc-spacer"></span>
-                ${firstRow ? dayLabelHtml : ''}
+                ${firstRow ? dayLabelHtml + addRowBtnHtml : ''}
                 <button class="iobios-toggle-btn iobios-toggle-edit" data-date="${key}" data-project="${alloc.project}" title="Editar">✏</button>
-                ${firstRow ? `<button class="iobios-toggle-btn iobios-toggle-delete" data-date="${key}" title="Marcar para borrar">🗑</button>` : ''}
+                <button class="iobios-toggle-btn iobios-toggle-delete" data-date="${key}" data-project="${alloc.project}" title="Marcar para borrar">🗑</button>
               </div>`;
             }
             firstRow = false;
@@ -238,7 +245,7 @@
                   <input type="text" class="iobios-alloc-project-input" data-date="${key}" data-project="${alloc.project}" value="${_customProjects.get(`${key}::${alloc.project}`) ?? alloc.project}">
                   <input type="number" class="iobios-alloc-hours-input" data-date="${key}" data-project="${alloc.project}" value="${customH}" min="0.5" max="24" step="0.5">
                   <span class="iobios-alloc-spacer"></span>
-                  ${firstRow ? dayLabelHtml : ''}
+                  ${firstRow ? dayLabelHtml + addRowBtnHtml : ''}
                   <button class="iobios-toggle-btn iobios-toggle-exclude" data-date="${key}" data-project="${alloc.project}" title="No añadir">✕</button>
                 </div>`;
               } else {
@@ -251,6 +258,23 @@
               firstRow = false;
             });
           }
+
+          // Manual rows (user-added, not from config)
+          manualRowsForDay.forEach(row => {
+            if (row.project.trim()) {
+              insertRecords++;
+              hoursToInsert += Number(row.hours || 0);
+            }
+            html += `<div class="iobios-preview-row iobios-status-new${key === todayKey && firstRow ? ' iobios-today' : ''}">
+              <span class="iobios-preview-date${!firstRow ? ' iobios-date-continuation' : ''}">${firstRow ? window.__iobios.formatDayLabel(date) : ''}</span>
+              <input type="text" class="iobios-manual-project-input" data-date="${key}" data-uid="${row.uid}" placeholder="Proyecto" value="${row.project}">
+              <input type="number" class="iobios-manual-hours-input" data-date="${key}" data-uid="${row.uid}" value="${row.hours}" min="0.5" max="24" step="0.5">
+              <span class="iobios-alloc-spacer"></span>
+              ${firstRow ? dayLabelHtml + addRowBtnHtml : ''}
+              <button class="iobios-toggle-btn iobios-remove-manual-row" data-date="${key}" data-uid="${row.uid}" title="Eliminar fila">✕</button>
+            </div>`;
+            firstRow = false;
+          });
         } else if (daySkipped) {
           // Naturally excluded day — show badge
           const statusClass = isVacation ? 'iobios-status-vacation'
@@ -272,7 +296,7 @@
 
       const summary = [];
       if (insertRecords > 0) summary.push(`${insertRecords} registro${insertRecords !== 1 ? 's' : ''} a insertar (${insertDays} día${insertDays !== 1 ? 's' : ''})`);
-      if (deleteDays > 0) summary.push(`${deleteDays} día${deleteDays !== 1 ? 's' : ''} a borrar`);
+      if (deleteCount > 0) summary.push(`${deleteCount} imputación${deleteCount !== 1 ? 'es' : ''} a borrar`);
       const summaryText = summary.length ? summary.join(', ') : '0 cambios';
 
       const hoursExpected = workingDays * (config.rules.maxHoursPerDay || 8);
@@ -284,7 +308,7 @@
       preview.innerHTML = `<div class="iobios-preview-footer"><p class="iobios-preview-summary">${summaryText}</p>${hoursLine}</div>` + html;
 
       const saveBtn = document.getElementById('iobios-panel-save');
-      if (saveBtn) saveBtn.disabled = insertRecords === 0 && deleteDays === 0;
+      if (saveBtn) saveBtn.disabled = insertRecords === 0 && deleteCount === 0;
     }
 
     function shiftMonth(delta) {
@@ -297,10 +321,11 @@
       _cachedData = null;
       _manualInclude   = new Set();
       _manualExclude   = new Set();
-      _markedForDelete = new Map();
+      _markedForDelete = new Set();
       _customHours     = new Map();
       _customProjects  = new Map();
       _editingRows     = new Set();
+      _manualRows      = new Map();
       updatePreview(true);
     }
 
@@ -313,9 +338,12 @@
 
       if (btn.classList.contains('iobios-toggle-delete')) {
         const allocs = _cachedData && _cachedData.existingMap.get(key);
-        if (allocs) _markedForDelete.set(key, allocs);
+        const alloc = allocs && allocs.find(a => a.project === project);
+        if (alloc) _markedForDelete.add(alloc);
       } else if (btn.classList.contains('iobios-toggle-undelete')) {
-        _markedForDelete.delete(key);
+        const allocs = _cachedData && _cachedData.existingMap.get(key);
+        const alloc = allocs && allocs.find(a => a.project === project);
+        if (alloc) _markedForDelete.delete(alloc);
       } else if (btn.classList.contains('iobios-toggle-include')) {
         if (project) {
           // Re-include a specific excluded project row
@@ -326,6 +354,16 @@
           for (const excKey of [..._manualExclude]) {
             if (excKey.startsWith(`${key}::`)) _manualExclude.delete(excKey);
           }
+        }
+      } else if (btn.classList.contains('iobios-add-manual-row')) {
+        if (!_manualRows.has(key)) _manualRows.set(key, []);
+        _manualRows.get(key).push({ uid: ++_uidCounter, project: '', hours: config.rules.maxHoursPerDay || 8 });
+      } else if (btn.classList.contains('iobios-remove-manual-row')) {
+        const uid = Number(btn.dataset.uid);
+        const rows = _manualRows.get(key);
+        if (rows) {
+          const idx = rows.findIndex(r => r.uid === uid);
+          if (idx !== -1) rows.splice(idx, 1);
         }
       } else if (btn.classList.contains('iobios-toggle-exclude') && project) {
         _manualExclude.add(`${key}::${project}`);
@@ -362,8 +400,50 @@
     });
 
     document.getElementById('iobios-preview').addEventListener('change', (e) => {
+      const manualProjectInput = e.target.closest('input.iobios-manual-project-input');
+      const manualHoursInput   = e.target.closest('input.iobios-manual-hours-input');
       const hoursInput   = e.target.closest('input.iobios-alloc-hours-input:not([disabled])');
       const projectInput = e.target.closest('input.iobios-alloc-project-input:not([disabled])');
+
+      if (manualProjectInput) {
+        const key = manualProjectInput.dataset.date;
+        const uid = Number(manualProjectInput.dataset.uid);
+        const val = manualProjectInput.value.trim();
+        const rows = _manualRows.get(key);
+        const row  = rows && rows.find(r => r.uid === uid);
+        if (row) {
+          if (val) {
+            const dayAllocs = (_cachedData && _cachedData.existingMap.get(key)) || [];
+            const activeExisting = new Set(dayAllocs.filter(a => !_markedForDelete.has(a)).map(a => a.project));
+            const configNames = config.timeAllocations
+              .filter(a => !_manualExclude.has(`${key}::${a.project}`))
+              .map(a => _customProjects.get(`${key}::${a.project}`) ?? a.project);
+            const otherManual = rows.filter(r => r.uid !== uid).map(r => r.project).filter(Boolean);
+            const takenNames = new Set([...activeExisting, ...configNames, ...otherManual]);
+            if (takenNames.has(val)) {
+              manualProjectInput.value = row.project;
+              window.__iobios.showToast('Ya existe ese proyecto en este día', 'error');
+              return;
+            }
+          }
+          row.project = val;
+          renderList(document.getElementById('iobios-preview'), config);
+        }
+        return;
+      }
+
+      if (manualHoursInput) {
+        const key = manualHoursInput.dataset.date;
+        const uid = Number(manualHoursInput.dataset.uid);
+        const val = parseFloat(manualHoursInput.value);
+        const rows = _manualRows.get(key);
+        const row  = rows && rows.find(r => r.uid === uid);
+        if (row && !isNaN(val) && val > 0) {
+          row.hours = val;
+          renderList(document.getElementById('iobios-preview'), config);
+        }
+        return;
+      }
 
       if (hoursInput) {
         const key     = hoursInput.dataset.date;
@@ -409,6 +489,22 @@
         const project = projectInput.dataset.project;
         const val     = projectInput.value.trim();
         if (key && project && val) {
+          // Collect all project names that will exist on this day after the rename
+          const dayAllocs = (_cachedData && _cachedData.existingMap.get(key)) || [];
+          const activeExisting = new Set(
+            dayAllocs
+              .filter(a => !_markedForDelete.has(a))
+              .map(a => a.project)
+          );
+          const otherNewNames = config.timeAllocations
+            .filter(a => a.project !== project && !_manualExclude.has(`${key}::${a.project}`))
+            .map(a => _customProjects.get(`${key}::${a.project}`) ?? a.project);
+          const takenNames = new Set([...activeExisting, ...otherNewNames]);
+          if (takenNames.has(val)) {
+            projectInput.value = _customProjects.get(`${key}::${project}`) ?? project;
+            window.__iobios.showToast('Ya existe ese proyecto en este día', 'error');
+            return;
+          }
           _customProjects.set(`${key}::${project}`, val);
         }
       }
@@ -467,11 +563,9 @@
 
     // Deletions
     let deleted = 0, deleteErrors = 0;
-    for (const [, allocs] of _markedForDelete) {
-      for (const alloc of allocs) {
-        const res = await window.__iobios.timeAllocationsDb.deleteAllocation(alloc);
-        if (res.ok) deleted++; else deleteErrors++;
-      }
+    for (const alloc of _markedForDelete) {
+      const res = await window.__iobios.timeAllocationsDb.deleteAllocation(alloc);
+      if (res.ok) deleted++; else deleteErrors++;
     }
 
     // Insertions
@@ -499,7 +593,7 @@
     const vacationSet  = new Set(vacations.map(v => v.toDateString()));
 
     // Dates eligible from the range (not deleted this session)
-    const allEligible = dates.filter(d => !_markedForDelete.has(d.toDateString()));
+    const allEligible = dates;
 
     // Force-included dates not already covered by allEligible
     const manualOnly = [..._manualInclude]
@@ -524,6 +618,21 @@
         const project = _customProjects.get(compositeKey) ?? alloc.project;
         const res = await window.__iobios.timeAllocationsDb.createAllocation(
           date, project, window.__iobios.hoursToHHMMSS(hours)
+        );
+        if (res.ok) ok++; else errors++;
+      }
+    }
+
+    // Manual rows
+    for (const [dateKey, rows] of _manualRows.entries()) {
+      const date = new Date(dateKey);
+      for (const row of rows) {
+        const project = row.project.trim();
+        if (!project) continue;
+        const compositeKey = `${dateKey}::${project}`;
+        if (existingKeys.has(compositeKey)) continue;
+        const res = await window.__iobios.timeAllocationsDb.createAllocation(
+          date, project, window.__iobios.hoursToHHMMSS(row.hours)
         );
         if (res.ok) ok++; else errors++;
       }

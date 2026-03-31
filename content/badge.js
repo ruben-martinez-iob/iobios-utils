@@ -38,7 +38,7 @@
   // ── Pending day counters ──────────────────────────────────────────────────
 
   async function countPendingAllocations(config) {
-    const { from, to } = window.__iobios.defaultDateRange();
+    const { from, to } = window.__iobios.defaultFullDateRange();
     const email = window.__iobios.getCurrentUserEmail();
     const [holidays, vacations, existing] = await Promise.all([
       window.__iobios.getHolidays(),
@@ -85,7 +85,7 @@
   }
 
   async function countPendingTimesheets(config) {
-    const { from, to } = window.__iobios.defaultDateRange();
+    const { from, to } = window.__iobios.defaultFullDateRange();
     const email = window.__iobios.getCurrentUserEmail();
     const [holidays, vacations, existing] = await Promise.all([
       window.__iobios.getHolidays(),

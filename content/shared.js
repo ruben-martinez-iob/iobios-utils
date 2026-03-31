@@ -76,6 +76,14 @@
     };
   }
 
+  function defaultFullDateRange() {
+    const now = new Date();
+    return {
+      from: new Date(2026, 0, 1),
+      to: new Date(now.getFullYear(), now.getMonth() + 1, 0),
+    };
+  }
+
   async function buildDateRange(dateFrom, dateTo, rules) {
     const holidays = rules.skipHolidays ? await window.__iobios.getHolidays() : [];
     const holidaySet = new Set(holidays.map(h => h.date.toDateString()));
@@ -253,7 +261,7 @@
     getSession: () => _session,
     getConfig,
     toDateInputValue, fromDateInput, formatDayLabel, hoursToHHMMSS,
-    defaultDateRange, buildDateRange,
+    defaultDateRange, buildDateRange, defaultFullDateRange,
     showToast,
     createPanel, openPanel, closePanel,
     // DB utilities
