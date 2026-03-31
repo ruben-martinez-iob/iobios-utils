@@ -36,7 +36,10 @@
         "content/timeallocations/renderer.js",
         "content/timeallocations/panel.js",
         "content/timeallocations/save.js",
-        "content/timesheets.js",
+        "content/timesheets/state.js",
+        "content/timesheets/renderer.js",
+        "content/timesheets/panel.js",
+        "content/timesheets/save.js",
         "content/badge.js",
         "content/content.js"
       ],
