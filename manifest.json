@@ -32,7 +32,10 @@
         "content/timeallocations-db.js",
         "content/timesheets-db.js",
         "content/absences-db.js",
-        "content/timeallocations.js",
+        "content/timeallocations/state.js",
+        "content/timeallocations/renderer.js",
+        "content/timeallocations/panel.js",
+        "content/timeallocations/save.js",
         "content/timesheets.js",
         "content/badge.js",
         "content/content.js"
