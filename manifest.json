@@ -25,6 +25,10 @@
       "matches": ["https://www.appsheet.com/start/6f5178ea-4877-4f23-9749-721b993b406a*"],
       "js": [
         "content/shared.js",
+        "content/shared/config.js",
+        "content/shared/date-utils.js",
+        "content/shared/appsheet-utils.js",
+        "content/shared/ui.js",
         "content/timeallocations-db.js",
         "content/timesheets-db.js",
         "content/absences-db.js",
