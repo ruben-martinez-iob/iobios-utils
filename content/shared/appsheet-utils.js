@@ -28,6 +28,14 @@
     });
   }
 
+  async function compressZlib(str) {
+    const cs = new CompressionStream('deflate');
+    const writer = cs.writable.getWriter();
+    writer.write(new TextEncoder().encode(str));
+    writer.close();
+    return await new Response(cs.readable).arrayBuffer();
+  }
+
   async function decompressZlib(arrayBuffer) {
     const ds = new DecompressionStream('deflate');
     const writer = ds.writable.getWriter();
@@ -35,6 +43,15 @@
     writer.close();
     const out = await new Response(ds.readable).arrayBuffer();
     return new TextDecoder().decode(out);
+  }
+
+  function putKey(db, key, value) {
+    return new Promise((resolve, reject) => {
+      const tx  = db.transaction('keyvaluepairs', 'readwrite');
+      const req = tx.objectStore('keyvaluepairs').put(value, key);
+      req.onsuccess = () => resolve();
+      req.onerror   = () => reject(req.error);
+    });
   }
 
   async function readChunks(db, tableName) {
@@ -89,7 +106,7 @@
   }
 
   Object.assign(window.__iobios, {
-    openDb, findAppDb, getKey, decompressZlib, readChunks,
+    openDb, findAppDb, getKey, compressZlib, decompressZlib, putKey, readChunks,
     parseAppSheetDate, formatDate, normalizeHours, randomUuid,
     getCurrentUserEmail, appSheetSettings,
   });

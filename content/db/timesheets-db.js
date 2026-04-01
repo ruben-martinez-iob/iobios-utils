@@ -37,25 +37,6 @@
     return `${hh}:${mm}:00`;
   }
 
-  // ── IndexedDB direct write helpers ──────────────────────────────────────
-
-  async function compressZlib(str) {
-    const cs = new CompressionStream('deflate');
-    const writer = cs.writable.getWriter();
-    writer.write(new TextEncoder().encode(str));
-    writer.close();
-    return await new Response(cs.readable).arrayBuffer();
-  }
-
-  function putKey(db, key, value) {
-    return new Promise((resolve, reject) => {
-      const tx  = db.transaction('keyvaluepairs', 'readwrite');
-      const req = tx.objectStore('keyvaluepairs').put(value, key);
-      req.onsuccess = () => resolve();
-      req.onerror   = () => reject(req.error);
-    });
-  }
-
   // Mark the timesheet row as deleted directly in the local IndexedDB chunk
   async function softDeleteInDb(timesheet) {
     try {
@@ -75,8 +56,8 @@
 
         if (idx !== -1) {
           rows[idx]['11'] = 'Y';
-          const compressed = await compressZlib(JSON.stringify(rows));
-          await putKey(db, `Timesheet~#${i}`, { ...raw, data: compressed });
+          const compressed = await window.__iobios.compressZlib(JSON.stringify(rows));
+          await window.__iobios.putKey(db, `Timesheet~#${i}`, { ...raw, data: compressed });
           console.log('[ioBios] softDeleteInDb: patched chunk', i, 'row', idx);
           return true;
         }
@@ -284,8 +265,6 @@
       if (!dbName) return false;
       const db = await window.__iobios.openDb(dbName);
 
-      function normalizeHours(h) { return h.length === 5 ? h + ':00' : h; }
-
       let i = 0;
       while (true) {
         const raw = await window.__iobios.getKey(db, `Timesheet~#${i}`);
@@ -297,16 +276,16 @@
         );
 
         if (idx !== -1) {
-          rows[idx]['5'] = normalizeHours(newTimes.clockIn1);
-          rows[idx]['6'] = normalizeHours(newTimes.clockOut1);
-          rows[idx]['7'] = normalizeHours(newTimes.clockIn2);
-          rows[idx]['8'] = normalizeHours(newTimes.clockOut2);
+          rows[idx]['5'] = window.__iobios.normalizeHours(newTimes.clockIn1);
+          rows[idx]['6'] = window.__iobios.normalizeHours(newTimes.clockOut1);
+          rows[idx]['7'] = window.__iobios.normalizeHours(newTimes.clockIn2);
+          rows[idx]['8'] = window.__iobios.normalizeHours(newTimes.clockOut2);
           rows[idx]['9'] = calcTotalHours(
             { clockIn: newTimes.clockIn1, clockOut: newTimes.clockOut1 },
             { clockIn: newTimes.clockIn2, clockOut: newTimes.clockOut2 }
           );
-          const compressed = await compressZlib(JSON.stringify(rows));
-          await putKey(db, `Timesheet~#${i}`, { ...raw, data: compressed });
+          const compressed = await window.__iobios.compressZlib(JSON.stringify(rows));
+          await window.__iobios.putKey(db, `Timesheet~#${i}`, { ...raw, data: compressed });
           console.log('[ioBios] updateTimesheetInDb: patched chunk', i, 'row', idx);
           return true;
         }
@@ -329,16 +308,14 @@
       const clientId     = session.clientId  || _clientId;
       const localVersion = session.localVersion;
 
-      function normalizeHours(h) { return h.length === 5 ? h + ':00' : h; }
-
       const r = timesheet._raw;
       const numericKeys = Object.keys(r).map(Number).filter(n => !isNaN(n));
       const maxKey = numericKeys.length > 0 ? Math.max(...numericKeys) : 14;
       const row = Array.from({ length: maxKey + 1 }, (_, i) => r[String(i)] ?? '');
-      row[5] = normalizeHours(newTimes.clockIn1);
-      row[6] = normalizeHours(newTimes.clockOut1);
-      row[7] = normalizeHours(newTimes.clockIn2);
-      row[8] = normalizeHours(newTimes.clockOut2);
+      row[5] = window.__iobios.normalizeHours(newTimes.clockIn1);
+      row[6] = window.__iobios.normalizeHours(newTimes.clockOut1);
+      row[7] = window.__iobios.normalizeHours(newTimes.clockIn2);
+      row[8] = window.__iobios.normalizeHours(newTimes.clockOut2);
       row[9] = calcTotalHours(
         { clockIn: newTimes.clockIn1, clockOut: newTimes.clockOut1 },
         { clockIn: newTimes.clockIn2, clockOut: newTimes.clockOut2 }

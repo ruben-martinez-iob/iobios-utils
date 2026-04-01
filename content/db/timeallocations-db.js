@@ -253,23 +253,6 @@
       if (!dbName) return false;
       const db = await window.__iobios.openDb(dbName);
 
-      async function compressZlib(str) {
-        const cs = new CompressionStream('deflate');
-        const writer = cs.writable.getWriter();
-        writer.write(new TextEncoder().encode(str));
-        writer.close();
-        return await new Response(cs.readable).arrayBuffer();
-      }
-
-      function putKey(db, key, value) {
-        return new Promise((resolve, reject) => {
-          const tx  = db.transaction('keyvaluepairs', 'readwrite');
-          const req = tx.objectStore('keyvaluepairs').put(value, key);
-          req.onsuccess = () => resolve();
-          req.onerror   = () => reject(req.error);
-        });
-      }
-
       let i = 0;
       while (true) {
         const raw = await window.__iobios.getKey(db, `Time Allocations~#${i}`);
@@ -282,8 +265,8 @@
 
         if (idx !== -1) {
           rows[idx]['5'] = window.__iobios.hoursToHHMMSS(newHours);
-          const compressed = await compressZlib(JSON.stringify(rows));
-          await putKey(db, `Time Allocations~#${i}`, { ...raw, data: compressed });
+          const compressed = await window.__iobios.compressZlib(JSON.stringify(rows));
+          await window.__iobios.putKey(db, `Time Allocations~#${i}`, { ...raw, data: compressed });
           console.log('[ioBios] updateAllocationInDb: patched chunk', i, 'row', idx);
           return true;
         }
