@@ -35,7 +35,7 @@
           || data.localVersion || data.LocalVersion
           || data.appTemplateVersion || data.AppTemplateVersion
           || null;
-        console.log('[ioBios] timeallocations-db syncToken obtained, localVersion:', _localVersion);
+        console.log('[ioBios] timeallocations-db syncToken obtained');
       }
     } catch (e) {
       console.warn('[ioBios] timeallocations-db ensureSession error:', e);
@@ -220,7 +220,6 @@
           rows.splice(idx, 1);
           const compressed = await window.__iobios.compressZlib(JSON.stringify(rows));
           await window.__iobios.putKey(db, `Time Allocations~#${i}`, { ...raw, data: compressed });
-          console.log('[ioBios] removeFromDb (alloc): removed from chunk', i, 'row', idx);
           return true;
         }
         i++;
@@ -265,7 +264,6 @@
       });
 
       const responseText = await res.text().catch(() => res.statusText);
-      console.log('[ioBios] deleteAllocation response:', res.status, responseText);
 
       if (!res.ok) return { ok: false, error: responseText };
 
@@ -301,7 +299,6 @@
           rows[idx]['5'] = window.__iobios.hoursToHHMMSS(newHours);
           const compressed = await window.__iobios.compressZlib(JSON.stringify(rows));
           await window.__iobios.putKey(db, `Time Allocations~#${i}`, { ...raw, data: compressed });
-          console.log('[ioBios] updateAllocationInDb: patched chunk', i, 'row', idx);
           return true;
         }
         i++;
@@ -358,7 +355,6 @@
       });
 
       const responseText = await res.text().catch(() => res.statusText);
-      console.log('[ioBios] updateAllocation response:', res.status, responseText);
 
       if (!res.ok) return { ok: false, error: responseText };
       const data = JSON.parse(responseText);

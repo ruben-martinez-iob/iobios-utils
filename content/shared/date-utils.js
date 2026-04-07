@@ -65,9 +65,6 @@
   // Returns all non-working day data for the given config.
   // Sets are only populated when the corresponding skip flag is true.
   async function getNonWorkingDays(config) {
-    console.log('[ioBios] getNonWorkingDays called with config:', config);
-    console.log('[ioBios] config.holidays exists:', !!config.holidays);
-    console.log('[ioBios] config.holidays content:', config.holidays);
     
     const email = window.__iobios.getCurrentUserEmail();
     const [dbHolidays, vacations, leaves] = await Promise.all([
@@ -79,19 +76,15 @@
     const holidayNameMap = new Map();
 
     // Always process custom holidays (needed for rendering and badges)
-    console.log('[ioBios] Processing custom holidays from config.holidays:', config.holidays);
     for (const entries of Object.values(config.holidays || {})) {
-      console.log('[ioBios] Processing entries for year:', entries);
       for (const entry of entries) {
         const dateStr = typeof entry === 'string' ? entry : entry.date;
         const name    = typeof entry === 'string' ? '' : (entry.name || '');
-        console.log('[ioBios] Processing entry:', dateStr, name);
         if (dateStr) {
           const d = new Date(dateStr + 'T00:00:00');
           if (!isNaN(d)) {
             const dateKey = d.toDateString();
             holidayNameMap.set(dateKey, name);
-            console.log('[ioBios] Added custom holiday:', dateKey, name, 'from', dateStr);
           }
         }
       }
@@ -105,8 +98,6 @@
     }
 
     const holidaySet  = new Set(holidayNameMap.keys());
-    console.log('[ioBios] Final holidaySet:', Array.from(holidaySet));
-    console.log('[ioBios] Final holidayNameMap:', Array.from(holidayNameMap.entries()));
     const vacationSet = new Set(vacations.map(v => v.toDateString()));
 
     const leaveDetailMap = new Map();

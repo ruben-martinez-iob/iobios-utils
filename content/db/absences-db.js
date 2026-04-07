@@ -40,12 +40,10 @@
         !['Bank Holidays', 'Employees', 'Timesheet', 'Time Allocations', 'Projects',
           '_Per User Settings', 'AppGalleryTable'].some(t => k.startsWith(t)));
       if (!chunkKey) {
-        console.warn('[ioBios] absences-db: no absences table found in keys:', keys);
         return [];   // do NOT cache — retry on next call
       }
       const tableName = chunkKey.replace('~#0', '');
-      console.log('[ioBios] absences-db: using table', tableName);
-      _absenceRowsCache = await window.__iobios.readChunks(db, tableName);
+            _absenceRowsCache = await window.__iobios.readChunks(db, tableName);
       _absenceRowsReady = true;
     } catch (e) {
       console.warn('[ioBios] absences-db _getAbsenceRows error:', e);

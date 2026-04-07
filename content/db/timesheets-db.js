@@ -58,7 +58,6 @@
           rows[idx]['11'] = 'Y';
           const compressed = await window.__iobios.compressZlib(JSON.stringify(rows));
           await window.__iobios.putKey(db, `Timesheet~#${i}`, { ...raw, data: compressed });
-          console.log('[ioBios] softDeleteInDb: patched chunk', i, 'row', idx);
           return true;
         }
         i++;
@@ -90,11 +89,9 @@
         body: JSON.stringify(body),
       });
       const data = await res.json();
-      console.log('[ioBios] ensureSession response keys:', Object.keys(data));
       const token = data.syncToken || data.SyncToken;
       if (token) {
         _syncToken = token;
-        console.log('[ioBios] syncToken obtained');
       } else {
         console.warn('[ioBios] no syncToken in sync response:', JSON.stringify(data).slice(0, 300));
       }
@@ -164,7 +161,6 @@
       const syncToken    = session.syncToken || _syncToken;
       const clientId     = session.clientId  || _clientId;
       const localVersion = session.localVersion;
-      console.log('[ioBios] session at createTimesheet:', { syncToken: !!syncToken, clientId: !!clientId });
       const now = new Date().toISOString();
       const params = new URLSearchParams({
         tzOffset: String(new Date().getTimezoneOffset()),
@@ -185,7 +181,6 @@
       });
 
       const responseText = await res.text().catch(() => res.statusText);
-      console.log('[ioBios] createTimesheet response:', res.status, responseText);
 
       if (!res.ok) return { ok: false, error: responseText };
 
@@ -240,7 +235,6 @@
       });
 
       const responseText = await res.text().catch(() => res.statusText);
-      console.log('[ioBios] deleteTimesheet response:', res.status, responseText);
 
       if (!res.ok) return { ok: false, error: responseText };
 
@@ -286,7 +280,6 @@
           );
           const compressed = await window.__iobios.compressZlib(JSON.stringify(rows));
           await window.__iobios.putKey(db, `Timesheet~#${i}`, { ...raw, data: compressed });
-          console.log('[ioBios] updateTimesheetInDb: patched chunk', i, 'row', idx);
           return true;
         }
         i++;

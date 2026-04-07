@@ -60,8 +60,6 @@
 
       // Get fresh config to include latest custom holidays
       const freshConfig = await window.__iobios.getConfig();
-      console.log('[ioBios] TA Panel - freshConfig:', freshConfig);
-      console.log('[ioBios] TA Panel - freshConfig.holidays:', freshConfig.holidays);
 
       if (!_s.cachedData || forceRefetch) {
         preview.innerHTML = '<p class="iobios-loading">Calculando...</p>';
