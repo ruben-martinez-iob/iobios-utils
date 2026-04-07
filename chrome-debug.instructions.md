@@ -6,7 +6,7 @@
 google-chrome \
   --remote-debugging-port=9222 \
   --remote-allow-origins='*' \
-  --user-data-dir=/tmp/chrome-debug \
+  --user-data-dir=$HOME/.chrome-debug-profile \
   --load-extension=/home/ruben/workspaces/iob/iobios-chrome-extension \
   --no-first-run \
   "https://www.appsheet.com/start/6f5178ea-4877-4f23-9749-721b993b406a" \

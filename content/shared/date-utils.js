@@ -4,6 +4,7 @@
 
   window.__iobios = window.__iobios || {};
 
+  // Returns YYYY-MM-DD — used for type="date" inputs in options and for API/storage
   function toDateInputValue(date) {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -11,7 +12,22 @@
     return `${y}-${m}-${d}`;
   }
 
+  // Returns dd/mm/yyyy — used for type="text" date inputs in the content-script panels
+  function toDisplayDate(date) {
+    const d = String(date.getDate()).padStart(2, '0');
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    return `${d}/${m}/${date.getFullYear()}`;
+  }
+
+  // Parses dd/mm/yyyy (panel text inputs)
   function fromDateInput(str) {
+    if (!str) return null;
+    const parts = str.split('/');
+    if (parts.length === 3) {
+      const [d, m, y] = parts.map(Number);
+      return new Date(y, m - 1, d);
+    }
+    // Fallback: YYYY-MM-DD
     const [y, m, d] = str.split('-').map(Number);
     return new Date(y, m - 1, d);
   }
@@ -46,8 +62,48 @@
     };
   }
 
+  // Returns all non-working day data for the given config.
+  // Sets are only populated when the corresponding skip flag is true.
+  async function getNonWorkingDays(config) {
+    const email = window.__iobios.getCurrentUserEmail();
+    const [dbHolidays, vacations, leaves] = await Promise.all([
+      config.rules.skipHolidays  ? window.__iobios.getHolidays(config)               : Promise.resolve([]),
+      config.rules.skipVacations ? window.__iobios.getApprovedVacations(email)  : Promise.resolve([]),
+      (config.rules.skipLeave ?? true) ? window.__iobios.getApprovedLeaves(email) : Promise.resolve([]),
+    ]);
+
+    const holidayNameMap = new Map();
+
+    if (config.rules.skipHolidays) {
+      for (const h of dbHolidays) {
+        holidayNameMap.set(h.date.toDateString(), h.name || '');
+      }
+      for (const entries of Object.values(config.holidays || {})) {
+        for (const entry of entries) {
+          const dateStr = typeof entry === 'string' ? entry : entry.date;
+          const name    = typeof entry === 'string' ? '' : (entry.name || '');
+          if (dateStr) {
+            const d = new Date(dateStr + 'T00:00:00');
+            if (!isNaN(d)) holidayNameMap.set(d.toDateString(), name);
+          }
+        }
+      }
+    }
+
+    const holidaySet  = new Set(holidayNameMap.keys());
+    const vacationSet = new Set(vacations.map(v => v.toDateString()));
+
+    const leaveDetailMap = new Map();
+    for (const l of leaves) {
+      leaveDetailMap.set(l.date.toDateString(), l.subtype || '');
+    }
+    const leaveSet = new Set(leaveDetailMap.keys());
+
+    return { holidaySet, holidayNameMap, vacationSet, leaveSet, leaveDetailMap };
+  }
+
   async function buildDateRange(dateFrom, dateTo, rules) {
-    const holidays = rules.skipHolidays ? await window.__iobios.getHolidays() : [];
+    const holidays = rules.skipHolidays ? await window.__iobios.getHolidays({holidays: {}}) : [];
     const holidaySet = new Set(holidays.map(h => h.date.toDateString()));
     const dates = [];
     const cur = new Date(dateFrom);
@@ -63,8 +119,8 @@
   }
 
   Object.assign(window.__iobios, {
-    toDateInputValue, fromDateInput, formatDayLabel, hoursToHHMMSS,
-    defaultDateRange, defaultFullDateRange, buildDateRange,
+    toDateInputValue, toDisplayDate, fromDateInput, formatDayLabel, hoursToHHMMSS,
+    defaultDateRange, defaultFullDateRange, buildDateRange, getNonWorkingDays,
   });
 
 })();

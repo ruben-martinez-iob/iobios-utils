@@ -1,14 +1,24 @@
 'use strict';
 
 // ── Holidays (Festivos) ────────────────────────────────────────────────────────
-function addHolidayRow(list, date) {
+function addHolidayRow(list, entry) {
+  // entry can be a string "YYYY-MM-DD" (legacy) or { date, name }
+  const dateVal = typeof entry === 'string' ? entry : (entry && entry.date) || '';
+  const nameVal = typeof entry === 'string' ? '' : (entry && entry.name) || '';
+
   const row = document.createElement('div');
   row.className = 'holiday-row';
 
-  const input = document.createElement('input');
-  input.type = 'date';
-  input.className = 'holiday-date';
-  input.value = date;
+  const dateInput = document.createElement('input');
+  dateInput.type = 'date';
+  dateInput.className = 'holiday-date';
+  dateInput.value = dateVal;
+
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.className = 'holiday-name';
+  nameInput.placeholder = 'Nombre (opcional)';
+  nameInput.value = nameVal;
 
   const removeBtn = document.createElement('button');
   removeBtn.type = 'button';
@@ -17,24 +27,25 @@ function addHolidayRow(list, date) {
   removeBtn.textContent = '✕';
   removeBtn.addEventListener('click', () => row.remove());
 
-  row.appendChild(input);
+  row.appendChild(dateInput);
+  row.appendChild(nameInput);
   row.appendChild(removeBtn);
   list.appendChild(row);
 }
 
 function renderHolidaysTab(holidays) {
-  const festivosPanel = document.getElementById('tab-festivos');
-  festivosPanel.innerHTML = '';
+  const container = document.getElementById('holidays-list-container');
+  container.innerHTML = '';
 
   const section = document.createElement('section');
   section.className = 'tab-section';
 
   const h2 = document.createElement('h2');
-  h2.textContent = 'Días festivos';
+  h2.textContent = 'Días festivos personalizados';
 
   const desc = document.createElement('p');
   desc.className = 'section-desc';
-  desc.textContent = 'Días festivos por año. Se excluyen al generar imputaciones.';
+  desc.textContent = 'Festivos propios por año. Se excluyen al generar imputaciones cuando "Excluir festivos" está activo.';
 
   const importBtn = document.createElement('button');
   importBtn.type = 'button';
@@ -88,15 +99,15 @@ function renderHolidaysTab(holidays) {
     const dateList = document.createElement('div');
     dateList.className = 'holiday-list';
 
-    const dates = holidays[year] || [];
-    dates.forEach((date) => addHolidayRow(dateList, date));
+    const entries = holidays[year] || [];
+    entries.forEach((entry) => addHolidayRow(dateList, entry));
 
     const addBtn = document.createElement('button');
     addBtn.type = 'button';
     addBtn.className = 'btn-add holiday-add';
     addBtn.textContent = '+ Añadir festivo';
     addBtn.addEventListener('click', () => {
-      addHolidayRow(dateList, '');
+      addHolidayRow(dateList, { date: '', name: '' });
       dateList.lastElementChild.querySelector('.holiday-date').focus();
     });
 
@@ -140,12 +151,12 @@ function renderHolidaysTab(holidays) {
           return;
         }
         const byYear = {};
-        resp.holidays.forEach(({ date }) => {
+        resp.holidays.forEach(({ date, name }) => {
           const year = date.slice(0, 4);
-          (byYear[year] = byYear[year] || []).push(date);
+          (byYear[year] = byYear[year] || []).push({ date, name: name || '' });
         });
         let added = 0;
-        Object.entries(byYear).forEach(([year, dates]) => {
+        Object.entries(byYear).forEach(([year, entries]) => {
           addYearSection(parseInt(year, 10));
           const panel = yearPanelsContainer.querySelector(`.year-panel[data-year="${year}"]`);
           if (!panel) return;
@@ -153,8 +164,8 @@ function renderHolidaysTab(holidays) {
           const existing = new Set(
             Array.from(dateList.querySelectorAll('.holiday-date')).map((i) => i.value)
           );
-          dates.forEach((date) => {
-            if (!existing.has(date)) { addHolidayRow(dateList, date); added++; }
+          entries.forEach((entry) => {
+            if (!existing.has(entry.date)) { addHolidayRow(dateList, entry); added++; }
           });
         });
         showStatus(added > 0 ? `${added} festivo(s) importado(s) de la DB.` : 'No hay festivos nuevos en la DB.', 'success');
@@ -164,7 +175,7 @@ function renderHolidaysTab(holidays) {
 
   section.appendChild(yearTabsBar);
   section.appendChild(yearPanelsContainer);
-  festivosPanel.appendChild(section);
+  container.appendChild(section);
 
   if (yearsToShow.includes(currentYear)) {
     activateYear(currentYear);
@@ -175,12 +186,15 @@ function renderHolidaysTab(holidays) {
 
 function getHolidays() {
   const result = {};
-  document.getElementById('tab-festivos').querySelectorAll('.year-panel').forEach((panel) => {
+  document.getElementById('holidays-list-container').querySelectorAll('.year-panel').forEach((panel) => {
     const year = panel.dataset.year;
-    const dates = Array.from(panel.querySelectorAll('.holiday-date'))
-      .map((i) => i.value)
-      .filter((v) => v);
-    if (dates.length > 0) result[year] = dates;
+    const entries = Array.from(panel.querySelectorAll('.holiday-row'))
+      .map((row) => ({
+        date: row.querySelector('.holiday-date').value,
+        name: row.querySelector('.holiday-name').value.trim(),
+      }))
+      .filter((e) => e.date);
+    if (entries.length > 0) result[year] = entries;
   });
   return result;
 }

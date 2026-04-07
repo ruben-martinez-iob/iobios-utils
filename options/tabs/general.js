@@ -108,18 +108,6 @@ document.getElementById('add-allocation').addEventListener('click', () => {
   document.getElementById('allocations-list').lastElementChild.querySelector('.alloc-project').focus();
 });
 
-document.getElementById('skip-holidays').addEventListener('change', () => {
-  const skipHolidaysCheckbox = document.getElementById('skip-holidays');
-  const tabBtnFestivos = document.getElementById('tab-btn-festivos');
-  tabBtnFestivos.hidden = !skipHolidaysCheckbox.checked;
-  if (!skipHolidaysCheckbox.checked && tabBtnFestivos.classList.contains('active')) {
-    tabBtnFestivos.classList.remove('active');
-    document.querySelectorAll('.tabpanel').forEach((p) => p.classList.remove('active'));
-    document.querySelector('.tab[data-tab="general"]').classList.add('active');
-    document.getElementById('tab-general').classList.add('active');
-  }
-});
-
 document.getElementById('max-hours').addEventListener('input', () => {
   checkHoursWarning();
   updateDerived();

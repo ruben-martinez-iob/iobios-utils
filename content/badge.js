@@ -38,16 +38,14 @@
   // ── Pending day counters ──────────────────────────────────────────────────
 
   async function countPendingAllocations(config) {
-    const { from, to } = window.__iobios.defaultFullDateRange();
-    const email = window.__iobios.getCurrentUserEmail();
-    const [holidays, vacations, existing] = await Promise.all([
-      window.__iobios.getHolidays(),
-      window.__iobios.getApprovedVacations(email),
+    const { from, to: toFull } = window.__iobios.defaultFullDateRange();
+    const today = new Date();
+    const to = toFull < today ? toFull : today;
+    const [nonWorkingDays, existing] = await Promise.all([
+      window.__iobios.getNonWorkingDays(config),
       window.__iobios.timeAllocationsDb.getAllocations({ dateFrom: from, dateTo: to }),
     ]);
-
-    const holidaySet  = new Set(holidays.map(h => h.date.toDateString()));
-    const vacationSet = new Set(vacations.map(v => v.toDateString()));
+    const { holidaySet, vacationSet, leaveSet } = nonWorkingDays;
 
     const existingMap = new Map();
     for (const a of existing) {
@@ -67,7 +65,8 @@
       const naturallyExcluded =
         (config.rules.skipWeekends && isWeekend) ||
         holidaySet.has(key) ||
-        vacationSet.has(key);
+        vacationSet.has(key) ||
+        leaveSet.has(key);
 
       if (!naturallyExcluded) {
         const dayAllocs        = existingMap.get(key) || [];
@@ -85,16 +84,14 @@
   }
 
   async function countPendingTimesheets(config) {
-    const { from, to } = window.__iobios.defaultFullDateRange();
-    const email = window.__iobios.getCurrentUserEmail();
-    const [holidays, vacations, existing] = await Promise.all([
-      window.__iobios.getHolidays(),
-      window.__iobios.getApprovedVacations(email),
+    const { from, to: toFull } = window.__iobios.defaultFullDateRange();
+    const today = new Date();
+    const to = toFull < today ? toFull : today;
+    const [nonWorkingDays, existing] = await Promise.all([
+      window.__iobios.getNonWorkingDays(config),
       window.__iobios.timeSheetsDb.getTimesheets({ dateFrom: from, dateTo: to }),
     ]);
-
-    const holidaySet  = new Set(holidays.map(h => h.date.toDateString()));
-    const vacationSet = new Set(vacations.map(v => v.toDateString()));
+    const { holidaySet, vacationSet, leaveSet } = nonWorkingDays;
     const existingSet = new Set(existing.map(t => t.date.toDateString()));
 
     let pending = 0;
@@ -107,7 +104,8 @@
       const naturallyExcluded =
         (config.rules.skipWeekends && isWeekend) ||
         holidaySet.has(key) ||
-        vacationSet.has(key);
+        vacationSet.has(key) ||
+        leaveSet.has(key);
 
       if (!naturallyExcluded && !existingSet.has(key)) pending++;
 
@@ -141,6 +139,7 @@
       // Always read fresh data from IndexedDB (important after sync)
       window.__iobios.timeAllocationsDb.clearCache();
       window.__iobios.timeSheetsDb.clearCache();
+      window.__iobios.clearAbsencesCache();
 
       const taBtn = document.getElementById('iobios-add-all-btn');
       const tsBtn = document.getElementById('iobios-add-all-ts-btn');

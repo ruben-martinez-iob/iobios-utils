@@ -30,11 +30,11 @@
           <button id="iobios-month-prev" class="iobios-month-nav" title="Mes anterior">&#8249;</button>
           <div class="iobios-range-field">
             <label>Desde</label>
-            <input type="date" id="iobios-date-from" lang="es" value="${window.__iobios.toDateInputValue(from)}" />
+            <input type="text" id="iobios-date-from" class="iobios-date-text" placeholder="dd/mm/yyyy" value="${window.__iobios.toDisplayDate(from)}" />
           </div>
           <div class="iobios-range-field">
             <label>Hasta</label>
-            <input type="date" id="iobios-date-to" lang="es" value="${window.__iobios.toDateInputValue(to)}" />
+            <input type="text" id="iobios-date-to" class="iobios-date-text" placeholder="dd/mm/yyyy" value="${window.__iobios.toDisplayDate(to)}" />
           </div>
           <button id="iobios-month-next" class="iobios-month-nav" title="Mes siguiente">&#8250;</button>
         </div>
@@ -46,7 +46,9 @@
       const fromVal = document.getElementById('iobios-date-from').value;
       const toVal   = document.getElementById('iobios-date-to').value;
       const preview = document.getElementById('iobios-preview');
-      if (!fromVal || !toVal || fromVal > toVal) {
+      const fromDate = window.__iobios.fromDateInput(fromVal);
+      const toDate   = window.__iobios.fromDateInput(toVal);
+      if (!fromVal || !toVal || !fromDate || !toDate || fromDate > toDate) {
         preview.innerHTML = '<p class="iobios-preview-empty">Selecciona un rango de fechas válido.</p>';
         _s.cachedData = null;
         return;
@@ -54,13 +56,10 @@
 
       if (!_s.cachedData || forceRefetch) {
         preview.innerHTML = '<p class="iobios-loading">Calculando...</p>';
-        const dateFrom = window.__iobios.fromDateInput(fromVal);
-        const dateTo   = window.__iobios.fromDateInput(toVal);
-        const email = window.__iobios.getCurrentUserEmail();
-
-        const [holidays, vacations, existing] = await Promise.all([
-          window.__iobios.getHolidays(),
-          window.__iobios.getApprovedVacations(email),
+        const dateFrom = fromDate;
+        const dateTo   = toDate;
+        const [nonWorkingDays, existing] = await Promise.all([
+          window.__iobios.getNonWorkingDays(config),
           window.__iobios.timeSheetsDb.getTimesheets({ dateFrom, dateTo }),
         ]);
         const allDates = [];
@@ -70,10 +69,12 @@
         // Map dateStr → timesheet for existing rows (needed for delete)
         const existingMap = new Map(existing.map(t => [t.date.toDateString(), t]));
 
+        const { holidaySet, holidayNameMap, vacationSet, leaveSet, leaveDetailMap } = nonWorkingDays;
         _s.cachedData = {
           allDates,
-          holidaySet:  new Set(holidays.map(h => h.date.toDateString())),
-          vacationSet: new Set(vacations.map(v => v.toDateString())),
+          holidaySet, holidayNameMap,
+          vacationSet,
+          leaveSet, leaveDetailMap,
           existingMap,
         };
       }
@@ -92,8 +93,8 @@
       const toInput   = document.getElementById('iobios-date-to');
       const d = window.__iobios.fromDateInput(fromInput.value);
       const base = new Date(d.getFullYear(), d.getMonth() + delta, 1);
-      fromInput.value = window.__iobios.toDateInputValue(base);
-      toInput.value   = window.__iobios.toDateInputValue(new Date(base.getFullYear(), base.getMonth() + 1, 0));
+      fromInput.value = window.__iobios.toDisplayDate(base);
+      toInput.value   = window.__iobios.toDisplayDate(new Date(base.getFullYear(), base.getMonth() + 1, 0));
       _s.cachedData      = null;
       _s.manualInclude   = new Set();
       _s.manualExclude   = new Set();
@@ -205,6 +206,24 @@
     document.getElementById('iobios-date-to').addEventListener('change',   () => { _s.cachedData = null; updatePreview(true); });
     document.getElementById('iobios-month-prev').addEventListener('click', () => shiftMonth(-1));
     document.getElementById('iobios-month-next').addEventListener('click', () => shiftMonth(+1));
+
+    // When AppSheet sync runs, refresh the preview so it reflects the new DB state
+    const syncBtn = document.querySelector('button[aria-label="Sync"]');
+    if (syncBtn && !syncBtn._iobiosTsHooked) {
+      syncBtn._iobiosTsHooked = true;
+      syncBtn.addEventListener('click', () => {
+        setTimeout(() => {
+          const panel = document.getElementById('iobios-panel');
+          if (panel && panel.classList.contains('open')) {
+            _s.cachedData = null;
+            window.__iobios.timeSheetsDb.clearCache();
+            window.__iobios.clearAbsencesCache();
+            updatePreview(true);
+          }
+        }, 2000);
+      });
+    }
+
     updatePreview(true);
   }
 

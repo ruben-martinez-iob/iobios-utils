@@ -16,6 +16,7 @@
     manualRows:      new Map(),  // dateStr → [{uid, project, hours}]
     uidCounter:      0,
     cachedData:      null,
+    conflictKeys:    new Set(),
   };
 
 })();

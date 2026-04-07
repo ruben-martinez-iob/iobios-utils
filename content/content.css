@@ -205,17 +205,18 @@
   letter-spacing: 0.05em;
 }
 
-.iobios-range-field input[type="date"] {
+.iobios-range-field input.iobios-date-text {
   border: 1px solid #bdbdbd;
   border-radius: 4px;
   padding: 6px 10px;
   font-size: 14px;
   color: #212121;
   background: #fff;
-  cursor: pointer;
+  cursor: text;
+  width: 110px;
 }
 
-.iobios-range-field input[type="date"]:focus {
+.iobios-range-field input.iobios-date-text:focus {
   outline: none;
   border-color: #1a73e8;
 }
@@ -271,6 +272,21 @@
   background: #f3e5f5;
 }
 
+/* ── Estado: festivo/bank holiday (verde) ── */
+.iobios-status-bank-holiday {
+  background: #c8e6c9;
+}
+
+/* ── Estado: ausencia vacacional (morado) ── */
+.iobios-status-holiday-absence {
+  background: #ede7f6;
+}
+
+/* ── Estado: baja/permiso leave (amarillo) ── */
+.iobios-status-leave {
+  background: #fff9c4;
+}
+
 /* ── Estado: a ignorar / excluido manualmente (amarillo) ── */
 .iobios-status-excluded {
   background: #fffde7;
@@ -292,6 +308,10 @@
 .iobios-status-weekend .iobios-preview-date,
 .iobios-status-vacation .iobios-preview-date,
 .iobios-status-holiday .iobios-preview-date,
+.iobios-status-bank-holiday .iobios-preview-date,
+.iobios-status-bank-holiday .iobios-preview-detail,
+.iobios-status-holiday-absence .iobios-preview-date,
+.iobios-status-leave .iobios-preview-date,
 .iobios-status-excluded .iobios-preview-date,
 .iobios-status-excluded .iobios-preview-detail,
 .iobios-status-delete .iobios-preview-date,
@@ -469,6 +489,27 @@
   border-color: #ab47bc;
 }
 
+/* Badge: Bank Holiday / festivo (verde) */
+.iobios-badge-bank-holiday {
+  background: #a5d6a7;
+  color: #1b5e20;
+  border-color: #66bb6a;
+}
+
+/* Badge: Ausencia vacacional (morado) */
+.iobios-badge-holiday-absence {
+  background: #d1c4e9;
+  color: #311b92;
+  border-color: #9575cd;
+}
+
+/* Badge: Baja/Permiso leave (amarillo) */
+.iobios-badge-leave {
+  background: #fff59d;
+  color: #f57f17;
+  border-color: #ffd54f;
+}
+
 /* ── Toast ────────────────────────────────────────────────────────────────── */
 
 #iobios-toast {
@@ -572,4 +613,12 @@
 
 .iobios-cancel-edit:hover {
   background: #ffcdd2;
+}
+
+/* ── Input en conflicto ───────────────────────────────────────────────────── */
+
+.iobios-input-error {
+  border-color: #c62828 !important;
+  background: #ffebee !important;
+  color: #b71c1c !important;
 }

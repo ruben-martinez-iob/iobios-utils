@@ -24,6 +24,7 @@
     _s.editingRows     = new Set();
     _s.manualRows      = new Map();
     _s.cachedData      = null;
+    _s.conflictKeys    = new Set();
 
     const { from, to } = window.__iobios.defaultDateRange();
 
@@ -33,11 +34,11 @@
           <button id="iobios-month-prev" class="iobios-month-nav" title="Mes anterior">&#8249;</button>
           <div class="iobios-range-field">
             <label>Desde</label>
-            <input type="date" id="iobios-date-from" lang="es" value="${window.__iobios.toDateInputValue(from)}" />
+            <input type="text" id="iobios-date-from" class="iobios-date-text" placeholder="dd/mm/yyyy" value="${window.__iobios.toDisplayDate(from)}" />
           </div>
           <div class="iobios-range-field">
             <label>Hasta</label>
-            <input type="date" id="iobios-date-to" lang="es" value="${window.__iobios.toDateInputValue(to)}" />
+            <input type="text" id="iobios-date-to" class="iobios-date-text" placeholder="dd/mm/yyyy" value="${window.__iobios.toDisplayDate(to)}" />
           </div>
           <button id="iobios-month-next" class="iobios-month-nav" title="Mes siguiente">&#8250;</button>
         </div>
@@ -49,7 +50,9 @@
       const fromVal = document.getElementById('iobios-date-from').value;
       const toVal   = document.getElementById('iobios-date-to').value;
       const preview = document.getElementById('iobios-preview');
-      if (!fromVal || !toVal || fromVal > toVal) {
+      const fromDate = window.__iobios.fromDateInput(fromVal);
+      const toDate   = window.__iobios.fromDateInput(toVal);
+      if (!fromVal || !toVal || !fromDate || !toDate || fromDate > toDate) {
         preview.innerHTML = '<p class="iobios-preview-empty">Selecciona un rango de fechas válido.</p>';
         _s.cachedData = null;
         return;
@@ -57,12 +60,10 @@
 
       if (!_s.cachedData || forceRefetch) {
         preview.innerHTML = '<p class="iobios-loading">Calculando...</p>';
-        const dateFrom = window.__iobios.fromDateInput(fromVal);
-        const dateTo   = window.__iobios.fromDateInput(toVal);
-        const email = window.__iobios.getCurrentUserEmail();
-        const [holidays, vacations, existing] = await Promise.all([
-          window.__iobios.getHolidays(),
-          window.__iobios.getApprovedVacations(email),
+        const dateFrom = fromDate;
+        const dateTo   = toDate;
+        const [nonWorkingDays, existing] = await Promise.all([
+          window.__iobios.getNonWorkingDays(config),
           window.__iobios.timeAllocationsDb.getAllocations({ dateFrom, dateTo }),
         ]);
 
@@ -78,10 +79,12 @@
           existingMap.get(key).push(a);
         }
 
+        const { holidaySet, holidayNameMap, vacationSet, leaveSet, leaveDetailMap } = nonWorkingDays;
         _s.cachedData = {
           allDates,
-          holidaySet:  new Set(holidays.map(h => h.date.toDateString())),
-          vacationSet: new Set(vacations.map(v => v.toDateString())),
+          holidaySet, holidayNameMap,
+          vacationSet,
+          leaveSet, leaveDetailMap,
           existingMap,
         };
       }
@@ -94,8 +97,8 @@
       const toInput   = document.getElementById('iobios-date-to');
       const d = window.__iobios.fromDateInput(fromInput.value);
       const base = new Date(d.getFullYear(), d.getMonth() + delta, 1);
-      fromInput.value = window.__iobios.toDateInputValue(base);
-      toInput.value   = window.__iobios.toDateInputValue(new Date(base.getFullYear(), base.getMonth() + 1, 0));
+      fromInput.value = window.__iobios.toDisplayDate(base);
+      toInput.value   = window.__iobios.toDisplayDate(new Date(base.getFullYear(), base.getMonth() + 1, 0));
       _s.cachedData      = null;
       _s.manualInclude   = new Set();
       _s.manualExclude   = new Set();
@@ -115,12 +118,14 @@
       if (!key) return;
 
       if (btn.classList.contains('iobios-toggle-delete')) {
+        const id = btn.dataset.id;
         const allocs = _s.cachedData && _s.cachedData.existingMap.get(key);
-        const alloc = allocs && allocs.find(a => a.project === project);
+        const alloc = allocs && allocs.find(a => a.id === id);
         if (alloc) _s.markedForDelete.add(alloc);
       } else if (btn.classList.contains('iobios-toggle-undelete')) {
+        const id = btn.dataset.id;
         const allocs = _s.cachedData && _s.cachedData.existingMap.get(key);
-        const alloc = allocs && allocs.find(a => a.project === project);
+        const alloc = allocs && allocs.find(a => a.id === id);
         if (alloc) _s.markedForDelete.delete(alloc);
       } else if (btn.classList.contains('iobios-toggle-include')) {
         if (project) {
@@ -143,6 +148,7 @@
           const idx = rows.findIndex(r => r.uid === uid);
           if (idx !== -1) rows.splice(idx, 1);
         }
+        _s.conflictKeys.delete(`manual::${key}::${uid}`);
       } else if (btn.classList.contains('iobios-toggle-exclude') && project) {
         _s.manualExclude.add(`${key}::${project}`);
       } else if (btn.classList.contains('iobios-toggle-edit')) {
@@ -175,6 +181,40 @@
         }
       }
       window.__iobios.renderTAList(document.getElementById('iobios-preview'), config);
+    });
+
+    document.getElementById('iobios-preview').addEventListener('input', (e) => {
+      const manualInput = e.target.closest('input.iobios-manual-project-input');
+      if (!manualInput) return;
+
+      const key = manualInput.dataset.date;
+      const uid = Number(manualInput.dataset.uid);
+      const val = manualInput.value.trim();
+      const conflictKey = `manual::${key}::${uid}`;
+
+      let isConflict = false;
+      if (val && _s.cachedData) {
+        const dayAllocs = _s.cachedData.existingMap.get(key) || [];
+        const activeExisting = new Set(dayAllocs.filter(a => !_s.markedForDelete.has(a)).map(a => a.project));
+        const configNames = new Set(
+          config.timeAllocations
+            .filter(a => !_s.manualExclude.has(`${key}::${a.project}`))
+            .map(a => _s.customProjects.get(`${key}::${a.project}`) ?? a.project)
+        );
+        const rows = _s.manualRows.get(key) || [];
+        const otherManual = new Set(rows.filter(r => r.uid !== uid).map(r => r.project).filter(Boolean));
+        isConflict = activeExisting.has(val) || configNames.has(val) || otherManual.has(val);
+      }
+
+      manualInput.classList.toggle('iobios-input-error', isConflict);
+      if (isConflict) {
+        _s.conflictKeys.add(conflictKey);
+      } else {
+        _s.conflictKeys.delete(conflictKey);
+      }
+
+      const saveBtn = document.getElementById('iobios-panel-save');
+      if (saveBtn) saveBtn.disabled = _s.conflictKeys.size > 0 || (!val && saveBtn.disabled);
     });
 
     document.getElementById('iobios-preview').addEventListener('change', (e) => {
@@ -245,6 +285,7 @@
             const missingAllocs = config.timeAllocations.filter(a => !existingProjects.has(a.project));
             const isDayFull = totalExistH >= maxH && !_s.manualInclude.has(key);
             const naturallyExcluded = _s.cachedData.holidaySet.has(key) || _s.cachedData.vacationSet.has(key) ||
+              (_s.cachedData.leaveSet && _s.cachedData.leaveSet.has(key)) ||
               (config.rules.skipWeekends && (date.getDay() === 0 || date.getDay() === 6)) ||
               date > new Date();
             const showMissingRows = !naturallyExcluded && !isDayFull;
@@ -316,6 +357,7 @@
           if (panel && panel.classList.contains('open')) {
             _s.cachedData = null;
             window.__iobios.timeAllocationsDb.clearCache();
+            window.__iobios.clearAbsencesCache();
             updatePreview(true);
           }
         }, 2000);

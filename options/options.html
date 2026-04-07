@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es-ES">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -15,7 +15,7 @@
       <button role="tab" class="tab active" data-tab="general">General</button>
       <button role="tab" class="tab" data-tab="time-allocations">Time Allocations</button>
       <button role="tab" class="tab" data-tab="time-sheets">Time Sheets</button>
-      <button role="tab" class="tab" data-tab="festivos" id="tab-btn-festivos" hidden>Festivos</button>
+      <button role="tab" class="tab" data-tab="festivos" id="tab-btn-festivos">Ausencias</button>
     </nav>
 
     <form id="options-form">
@@ -41,27 +41,6 @@
           <small>El dominio donde se inyecta la extensión.</small>
         </div>
         <div class="field">
-          <label class="toggle-label">
-            <span>Omitir fines de semana</span>
-            <input type="checkbox" id="skip-weekends" name="skipWeekends" />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-        <div class="field">
-          <label class="toggle-label">
-            <span>Excluir festivos</span>
-            <input type="checkbox" id="skip-holidays" name="skipHolidays" />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-        <div class="field">
-          <label class="toggle-label">
-            <span>Excluir vacaciones</span>
-            <input type="checkbox" id="skip-vacations" name="skipVacations" />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-        <div class="field">
           <label for="max-hours">Máximo de horas por día</label>
           <input type="number" id="max-hours" name="maxHoursPerDay" min="1" max="24" step="0.5" />
           <small>Límite de la suma total de horas de todas las plantillas.</small>
@@ -79,11 +58,11 @@
           <div class="summer-dates">
             <div class="field">
               <label for="summer-start">Inicio</label>
-              <input type="date" id="summer-start" />
+              <input type="date" id="summer-start" lang="es" />
             </div>
             <div class="field">
               <label for="summer-end">Fin</label>
-              <input type="date" id="summer-end" />
+              <input type="date" id="summer-end" lang="es" />
             </div>
           </div>
         </section>
@@ -149,7 +128,41 @@
       </div>
 
       <!-- Tab: Festivos -->
-      <div id="tab-festivos" role="tabpanel" class="tabpanel"></div>
+      <div id="tab-festivos" role="tabpanel" class="tabpanel">
+        <section class="tab-section">
+          <h2>Tipos de días no trabajables</h2>
+          <p class="section-desc">Selecciona qué tipos se excluyen por defecto al generar imputaciones.</p>
+          <div class="field">
+            <label class="toggle-label">
+              <span>Excluir fines de semana</span>
+              <input type="checkbox" id="skip-weekends" name="skipWeekends" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="field">
+            <label class="toggle-label">
+              <span>Excluir festivos (Bank Holidays)</span>
+              <input type="checkbox" id="skip-holidays" name="skipHolidays" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="field">
+            <label class="toggle-label">
+              <span>Excluir vacaciones</span>
+              <input type="checkbox" id="skip-vacations" name="skipVacations" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="field">
+            <label class="toggle-label">
+              <span>Excluir bajas y permisos (Leave)</span>
+              <input type="checkbox" id="skip-leave" name="skipLeave" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </section>
+        <div id="holidays-list-container"></div>
+      </div>
 
       <div class="form-footer">
         <button type="submit" id="save-btn">Guardar</button>

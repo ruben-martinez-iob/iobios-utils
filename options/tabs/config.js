@@ -4,7 +4,7 @@
 const DEFAULTS = {
   enabled: true,
   timeAllocations: [{ project: 'ATS/SCS Roadmap Acceleration', hours: 8 }],
-  rules: { skipWeekends: true, skipHolidays: false, skipVacations: false, maxHoursPerDay: 8 },
+  rules: { skipWeekends: true, skipHolidays: false, skipVacations: true, skipLeave: true, maxHoursPerDay: 8 },
   timeSheets: {
     period1: { clockIn: '09:00', clockOut: '14:00' },
     period2: { clockIn: '14:30', clockOut: '17:30' },
@@ -45,7 +45,7 @@ function loadConfig() {
     document.getElementById('skip-weekends').checked  = config.rules.skipWeekends;
     document.getElementById('skip-holidays').checked  = config.rules.skipHolidays;
     document.getElementById('skip-vacations').checked = config.rules.skipVacations;
-    document.getElementById('tab-btn-festivos').hidden = !config.rules.skipHolidays;
+    document.getElementById('skip-leave').checked     = config.rules.skipLeave ?? true;
     document.getElementById('max-hours').value = config.rules.maxHoursPerDay;
     checkHoursWarning();
 
@@ -128,6 +128,7 @@ function validateAndSave() {
       skipWeekends:  document.getElementById('skip-weekends').checked,
       skipHolidays:  document.getElementById('skip-holidays').checked,
       skipVacations: document.getElementById('skip-vacations').checked,
+      skipLeave:     document.getElementById('skip-leave').checked,
       maxHoursPerDay: maxH,
     },
     timeSheets: {

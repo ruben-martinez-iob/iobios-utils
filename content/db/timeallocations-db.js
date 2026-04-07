@@ -79,9 +79,19 @@
         const db = await window.__iobios.openDb(dbName);
         const email = window.__iobios.getCurrentUserEmail();
         const rows = await window.__iobios.readChunks(db, 'Time Allocations');
-        _allocationsCache = rows
-          .filter(r => r['1'] && r['3'] && r['7'] !== 'Y' && (!email || r['2'] === email))
-          .map(parseAllocationRow);
+        // Deduplicate by date+project, keeping highest rowNum.
+        // Duplicate rows can appear in IndexedDB after failed delete/create cycles.
+        const byDateProject = new Map();
+        for (const r of rows) {
+          if (!r['1'] || !r['3'] || r['7'] === 'Y') continue;
+          if (email && r['2'] !== email) continue;
+          const ck = `${r['3']}|${r['4']}`;
+          const existing = byDateProject.get(ck);
+          if (!existing || (parseInt(r['0'], 10) || 0) > (parseInt(existing['0'], 10) || 0)) {
+            byDateProject.set(ck, r);
+          }
+        }
+        _allocationsCache = [...byDateProject.values()].map(parseAllocationRow);
       } catch (e) {
         console.warn('[ioBios] timeallocations-db getAllocations error:', e);
         _allocationsCache = [];
@@ -189,25 +199,47 @@
     }
   }
 
-  async function deleteAllocation(allocation) {
+  // Remove the allocation row from the local IndexedDB chunk
+  async function removeFromDb(allocation) {
     try {
       const dbName = await window.__iobios.findAppDb(APP_ID);
-      let syncToken = null, localVersion = null;
-      if (dbName) {
-        const db = await window.__iobios.openDb(dbName);
-        syncToken = await window.__iobios.getKey(db, 'SyncToken');
-        if (syncToken) {
-          try {
-            const payload = JSON.parse(atob(syncToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-            localVersion = payload.appVersion || null;
-          } catch (_) {}
+      if (!dbName) return false;
+      const db = await window.__iobios.openDb(dbName);
+
+      let i = 0;
+      while (true) {
+        const raw = await window.__iobios.getKey(db, `Time Allocations~#${i}`);
+        if (!raw || !raw.data) break;
+
+        const rows = JSON.parse(await window.__iobios.decompressZlib(raw.data));
+        const idx  = rows.findIndex(r =>
+          r['1'] === allocation.id || r['0'] === String(allocation.rowNum)
+        );
+
+        if (idx !== -1) {
+          rows.splice(idx, 1);
+          const compressed = await window.__iobios.compressZlib(JSON.stringify(rows));
+          await window.__iobios.putKey(db, `Time Allocations~#${i}`, { ...raw, data: compressed });
+          console.log('[ioBios] removeFromDb (alloc): removed from chunk', i, 'row', idx);
+          return true;
         }
+        i++;
       }
-      if (!syncToken) {
-        if (!_syncToken) await ensureSession();
-        syncToken = _syncToken;
-      }
-      const clientId = localStorage.getItem('JeeneeClient') || _clientId;
+      console.warn('[ioBios] removeFromDb (alloc): row not found');
+      return false;
+    } catch (e) {
+      console.warn('[ioBios] removeFromDb (alloc) error:', e);
+      return false;
+    }
+  }
+
+  async function deleteAllocation(allocation) {
+    try {
+      const session = window.__iobios.getSession();
+      if (!session.syncToken) await ensureSession();
+      const syncToken    = session.syncToken || _syncToken;
+      const clientId     = session.clientId  || _clientId;
+      const localVersion = session.localVersion;
 
       const r = allocation._raw;
       const row = [r['0'], r['1'], r['2'], r['3'], r['4'], r['5'], r['6']];
@@ -236,10 +268,12 @@
       console.log('[ioBios] deleteAllocation response:', res.status, responseText);
 
       if (!res.ok) return { ok: false, error: responseText };
-      const data = JSON.parse(responseText);
-      if (!data.Success) return { ok: false, error: data.ErrorDescription };
 
-      _allocationsCache = null;
+      // Remove from local IndexedDB and in-memory cache
+      await removeFromDb(allocation);
+      if (_allocationsCache) {
+        _allocationsCache = _allocationsCache.filter(a => a.id !== allocation.id);
+      }
       return { ok: true };
     } catch (e) {
       console.warn('[ioBios] timeallocations-db deleteAllocation error:', e);

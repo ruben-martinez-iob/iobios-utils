@@ -41,7 +41,7 @@
 
   function renderList(preview, config) {
     const _s = window.__iobios._tsState;
-    const { allDates, holidaySet, vacationSet, existingMap } = _s.cachedData;
+    const { allDates, holidaySet, holidayNameMap, vacationSet, leaveSet, leaveDetailMap, existingMap } = _s.cachedData;
 
     const defaultDayH = periodH(config.timeSheets?.period1?.clockIn, config.timeSheets?.period1?.clockOut)
       + periodH(config.timeSheets?.period2?.clockIn, config.timeSheets?.period2?.clockOut);
@@ -60,13 +60,14 @@
       const isWeekend  = dow === 0 || dow === 6;
       const isHoliday  = holidaySet.has(key);
       const isVacation = vacationSet.has(key);
+      const isLeave    = leaveSet.has(key);
       const isExisting = existingMap.has(key);
       const forced     = _s.manualInclude.has(key);
       const skipped    = _s.manualExclude.has(key);
       const toDelete   = _s.markedForDelete.has(key);
 
       const isFuture = date > new Date();
-      const naturallyExcluded = (config.rules.skipWeekends && isWeekend) || isHoliday || isVacation || isFuture;
+      const naturallyExcluded = (config.rules.skipWeekends && isWeekend) || isHoliday || isVacation || isLeave || isFuture;
       const willInsert = !isExisting && (forced || (!skipped && !naturallyExcluded));
 
       const inSummer = isSummerDate(date, config);
@@ -131,6 +132,27 @@
             <button class="iobios-toggle-btn iobios-toggle-delete" data-date="${key}" title="Marcar para borrar">🗑</button>
           </div>`;
         }
+        // Absence indicator: shown even when the day has an existing timesheet
+        if ((isHoliday || isVacation || isLeave || isWeekend) && !forced) {
+          const absenceStatusClass = isLeave    ? 'iobios-status-leave'
+            : isVacation ? 'iobios-status-holiday-absence'
+            : isHoliday  ? 'iobios-status-bank-holiday'
+            : 'iobios-status-weekend';
+          const absenceBadgeLabel = isLeave    ? (leaveDetailMap.get(key) || 'Permiso/Baja')
+            : isVacation ? 'Vacaciones'
+            : isHoliday  ? 'Festivo'
+            : 'Fin de semana';
+          const absenceBadgeClass = isLeave    ? 'iobios-badge-leave'
+            : isVacation ? 'iobios-badge-holiday-absence'
+            : isHoliday  ? 'iobios-badge-bank-holiday'
+            : 'iobios-badge-weekend';
+          const absenceDetail = isHoliday ? (holidayNameMap.get(key) || '') : '';
+          html += `<div class="iobios-preview-row ${absenceStatusClass}">
+            <span class="iobios-preview-date iobios-date-continuation"></span>
+            <span class="iobios-preview-badge ${absenceBadgeClass}">${absenceBadgeLabel}</span>
+            ${absenceDetail ? `<span class="iobios-preview-detail">${absenceDetail}</span>` : ''}
+          </div>`;
+        }
       } else if (willInsert) {
         insertCount++;
         const h = _s.customHours.get(key) || config.timeSheets;
@@ -158,17 +180,25 @@
           <button class="iobios-toggle-btn iobios-toggle-exclude" data-date="${key}" title="Excluir">✕</button>
         </div>`;
       } else {
-        const statusClass = isVacation ? 'iobios-status-vacation'
-          : isHoliday ? 'iobios-status-holiday'
-          : isWeekend ? 'iobios-status-weekend'
+        const statusClass = isLeave    ? 'iobios-status-leave'
+          : isVacation ? 'iobios-status-holiday-absence'
+          : isHoliday  ? 'iobios-status-bank-holiday'
+          : isWeekend  ? 'iobios-status-weekend'
           : 'iobios-status-excluded';
-        const badge = isVacation ? 'Ausencia' : isHoliday ? 'Festivo'
-          : isWeekend ? 'Fin de semana' : isFuture ? 'Futuro' : 'Excluido';
-        const badgeClass = isVacation ? 'iobios-badge-vacation' : isHoliday ? 'iobios-badge-holiday'
-          : isWeekend ? 'iobios-badge-weekend' : 'iobios-badge-excluded';
+        const badgeLabel = isLeave    ? (leaveDetailMap.get(key) || 'Permiso/Baja')
+          : isVacation ? 'Vacaciones'
+          : isHoliday  ? 'Festivo'
+          : isWeekend  ? 'Fin de semana'
+          : isFuture   ? 'Futuro' : 'Excluido';
+        const badgeClass = isLeave    ? 'iobios-badge-leave'
+          : isVacation ? 'iobios-badge-holiday-absence'
+          : isHoliday  ? 'iobios-badge-bank-holiday'
+          : isWeekend  ? 'iobios-badge-weekend' : 'iobios-badge-excluded';
+        const detailText = isHoliday ? (holidayNameMap.get(key) || '') : '';
         html += `<div class="iobios-preview-row ${statusClass}${key === todayKey ? ' iobios-today' : ''}">
           <span class="iobios-preview-date">${window.__iobios.formatDayLabel(date)}</span>
-          <span class="iobios-preview-badge ${badgeClass}">${badge}</span>
+          <span class="iobios-preview-badge ${badgeClass}">${badgeLabel}</span>
+          ${detailText ? `<span class="iobios-preview-detail">${detailText}</span>` : ''}
           <button class="iobios-toggle-btn iobios-toggle-include" data-date="${key}" title="Incluir">+</button>
         </div>`;
       }

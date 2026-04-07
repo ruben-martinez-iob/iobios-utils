@@ -16,7 +16,6 @@
 
     const dateFrom = window.__iobios.fromDateInput(fromVal);
     const dateTo   = window.__iobios.fromDateInput(toVal);
-    const email    = window.__iobios.getCurrentUserEmail();
 
     // Deletions
     let deleted = 0, deleteErrors = 0;
@@ -26,13 +25,13 @@
     }
 
     // Insertions
-    const [dates, existing, vacations] = await Promise.all([
+    const [dates, existing, nonWorkingDays] = await Promise.all([
       window.__iobios.buildDateRange(dateFrom, dateTo, { ...config.rules, skipHolidays: true }),
       window.__iobios.timeSheetsDb.getTimesheets({ dateFrom, dateTo }),
-      window.__iobios.getApprovedVacations(email),
+      window.__iobios.getNonWorkingDays(config),
     ]);
+    const { vacationSet, leaveSet } = nonWorkingDays;
     const existingDates = new Set(existing.map(t => t.date.toDateString()));
-    const vacationSet   = new Set(vacations.map(v => v.toDateString()));
 
     const allEligible = dates.filter(d =>
       !existingDates.has(d.toDateString()) && !_s.markedForDelete.has(d.toDateString())
@@ -42,7 +41,11 @@
       .filter(d => !existingDates.has(d.toDateString()) && !allEligible.some(e => e.toDateString() === d.toDateString()));
 
     const toInsert = [
-      ...allEligible.filter(d => !vacationSet.has(d.toDateString()) && !_s.manualExclude.has(d.toDateString())),
+      ...allEligible.filter(d =>
+        !vacationSet.has(d.toDateString()) &&
+        !leaveSet.has(d.toDateString()) &&
+        !_s.manualExclude.has(d.toDateString())
+      ),
       ...manualOnly,
     ];
 

@@ -27,7 +27,7 @@
 
   function renderList(preview, config) {
     const _s = window.__iobios._taState;
-    const { allDates, holidaySet, vacationSet, existingMap } = _s.cachedData;
+    const { allDates, holidaySet, holidayNameMap, vacationSet, leaveSet, leaveDetailMap, existingMap } = _s.cachedData;
     const todayKey    = new Date().toDateString();
     let insertRecords = 0;
     let insertDays    = 0;
@@ -43,10 +43,11 @@
       const isWeekend  = dow === 0 || dow === 6;
       const isHoliday  = holidaySet.has(key);
       const isVacation = vacationSet.has(key);
+      const isLeave    = leaveSet.has(key);
       const forced     = _s.manualInclude.has(key);
 
       const isFuture = date > new Date();
-      const naturallyExcluded = (config.rules.skipWeekends && isWeekend) || isHoliday || isVacation || isFuture;
+      const naturallyExcluded = (config.rules.skipWeekends && isWeekend) || isHoliday || isVacation || isLeave || isFuture;
       const daySkipped = naturallyExcluded && !forced;
 
       const dayAllocs = existingMap.get(key) || [];
@@ -115,7 +116,7 @@
               <span class="iobios-preview-detail">${alloc.project} — ${alloc.hours}</span>
               <span class="iobios-preview-badge iobios-badge-delete">Borrar</span>
               ${firstRow ? addRowBtnHtml : ''}
-              <button class="iobios-toggle-btn iobios-toggle-undelete" data-date="${key}" data-project="${alloc.project}" title="Cancelar borrado">✕</button>
+              <button class="iobios-toggle-btn iobios-toggle-undelete" data-date="${key}" data-project="${alloc.project}" data-id="${alloc.id}" title="Cancelar borrado">✕</button>
             </div>`;
           } else if (isEditing) {
             html += `<div class="iobios-preview-row iobios-status-existing${key === todayKey && firstRow ? ' iobios-today' : ''}">
@@ -135,7 +136,7 @@
               <span class="iobios-alloc-spacer"></span>
               ${firstRow ? dayLabelHtml + addRowBtnHtml : ''}
               <button class="iobios-toggle-btn iobios-toggle-edit" data-date="${key}" data-project="${alloc.project}" title="Editar">✏</button>
-              <button class="iobios-toggle-btn iobios-toggle-delete" data-date="${key}" data-project="${alloc.project}" title="Marcar para borrar">🗑</button>
+              <button class="iobios-toggle-btn iobios-toggle-delete" data-date="${key}" data-project="${alloc.project}" data-id="${alloc.id}" title="Marcar para borrar">🗑</button>
             </div>`;
           }
           firstRow = false;
@@ -158,9 +159,10 @@
               insertRecords++;
               const customH = _s.customHours.get(`${key}::${alloc.project}`) ?? alloc.hours;
               hoursToInsert += Number(customH);
-              html += `<div class="iobios-preview-row iobios-status-new${key === todayKey && firstRow ? ' iobios-today' : ''}">
+              const isConflict = _s.conflictKeys && _s.conflictKeys.has(`${key}::${alloc.project}`);
+            html += `<div class="iobios-preview-row iobios-status-new${key === todayKey && firstRow ? ' iobios-today' : ''}">
                 <span class="iobios-preview-date${!firstRow ? ' iobios-date-continuation' : ''}">${firstRow ? window.__iobios.formatDayLabel(date) : ''}</span>
-                <input type="text" class="iobios-alloc-project-input" data-date="${key}" data-project="${alloc.project}" value="${_s.customProjects.get(`${key}::${alloc.project}`) ?? alloc.project}">
+                <input type="text" class="iobios-alloc-project-input${isConflict ? ' iobios-input-error' : ''}" data-date="${key}" data-project="${alloc.project}" value="${_s.customProjects.get(`${key}::${alloc.project}`) ?? alloc.project}">
                 <input type="number" class="iobios-alloc-hours-input" data-date="${key}" data-project="${alloc.project}" value="${customH}" min="0.5" max="24" step="0.5">
                 <span class="iobios-alloc-spacer"></span>
                 ${firstRow ? dayLabelHtml + addRowBtnHtml : ''}
@@ -183,9 +185,10 @@
             insertRecords++;
             hoursToInsert += Number(row.hours || 0);
           }
+          const isManualConflict = _s.conflictKeys && _s.conflictKeys.has(`manual::${key}::${row.uid}`);
           html += `<div class="iobios-preview-row iobios-status-new${key === todayKey && firstRow ? ' iobios-today' : ''}">
             <span class="iobios-preview-date${!firstRow ? ' iobios-date-continuation' : ''}">${firstRow ? window.__iobios.formatDayLabel(date) : ''}</span>
-            <input type="text" class="iobios-manual-project-input" data-date="${key}" data-uid="${row.uid}" placeholder="Proyecto" value="${row.project}">
+            <input type="text" class="iobios-manual-project-input${isManualConflict ? ' iobios-input-error' : ''}" data-date="${key}" data-uid="${row.uid}" placeholder="Proyecto" value="${row.project}">
             <input type="number" class="iobios-manual-hours-input" data-date="${key}" data-uid="${row.uid}" value="${row.hours}" min="0.5" max="24" step="0.5">
             <span class="iobios-alloc-spacer"></span>
             ${firstRow ? dayLabelHtml + addRowBtnHtml : ''}
@@ -193,19 +196,50 @@
           </div>`;
           firstRow = false;
         });
+
+        // Absence indicator: shown even when the day has existing data
+        if (daySkipped && (isHoliday || isVacation || isLeave || isWeekend)) {
+          const absenceStatusClass = isLeave    ? 'iobios-status-leave'
+            : isVacation ? 'iobios-status-holiday-absence'
+            : isHoliday  ? 'iobios-status-bank-holiday'
+            : 'iobios-status-weekend';
+          const absenceBadgeLabel = isLeave    ? (leaveDetailMap.get(key) || 'Permiso/Baja')
+            : isVacation ? 'Vacaciones'
+            : isHoliday  ? 'Festivo'
+            : 'Fin de semana';
+          const absenceBadgeClass = isLeave    ? 'iobios-badge-leave'
+            : isVacation ? 'iobios-badge-holiday-absence'
+            : isHoliday  ? 'iobios-badge-bank-holiday'
+            : 'iobios-badge-weekend';
+          const absenceDetail = isHoliday ? (holidayNameMap.get(key) || '') : '';
+          html += `<div class="iobios-preview-row ${absenceStatusClass}">
+            <span class="iobios-preview-date iobios-date-continuation"></span>
+            <span class="iobios-preview-badge ${absenceBadgeClass}">${absenceBadgeLabel}</span>
+            ${absenceDetail ? `<span class="iobios-preview-detail">${absenceDetail}</span>` : ''}
+            <button class="iobios-toggle-btn iobios-toggle-include" data-date="${key}" title="Incluir día">+</button>
+          </div>`;
+        }
       } else if (daySkipped) {
         // Naturally excluded day — show badge
-        const statusClass = isVacation ? 'iobios-status-vacation'
-          : isHoliday ? 'iobios-status-holiday'
-          : isWeekend ? 'iobios-status-weekend'
+        const statusClass = isLeave    ? 'iobios-status-leave'
+          : isVacation ? 'iobios-status-holiday-absence'
+          : isHoliday  ? 'iobios-status-bank-holiday'
+          : isWeekend  ? 'iobios-status-weekend'
           : 'iobios-status-excluded';
-        const badge = isVacation ? 'Ausencia' : isHoliday ? 'Festivo'
-          : isWeekend ? 'Fin de semana' : isFuture ? 'Futuro' : 'Excluido';
-        const badgeClass = isVacation ? 'iobios-badge-vacation' : isHoliday ? 'iobios-badge-holiday'
-          : isWeekend ? 'iobios-badge-weekend' : 'iobios-badge-excluded';
+        const badgeLabel = isLeave    ? (leaveDetailMap.get(key) || 'Permiso/Baja')
+          : isVacation ? 'Vacaciones'
+          : isHoliday  ? 'Festivo'
+          : isWeekend  ? 'Fin de semana'
+          : isFuture   ? 'Futuro' : 'Excluido';
+        const badgeClass = isLeave    ? 'iobios-badge-leave'
+          : isVacation ? 'iobios-badge-holiday-absence'
+          : isHoliday  ? 'iobios-badge-bank-holiday'
+          : isWeekend  ? 'iobios-badge-weekend' : 'iobios-badge-excluded';
+        const detailText = isHoliday ? (holidayNameMap.get(key) || '') : '';
         html += `<div class="iobios-preview-row ${statusClass}${key === todayKey ? ' iobios-today' : ''}">
           <span class="iobios-preview-date">${window.__iobios.formatDayLabel(date)}</span>
-          <span class="iobios-preview-badge ${badgeClass}">${badge}</span>
+          <span class="iobios-preview-badge ${badgeClass}">${badgeLabel}</span>
+          ${detailText ? `<span class="iobios-preview-detail">${detailText}</span>` : ''}
           <button class="iobios-toggle-btn iobios-toggle-include" data-date="${key}" title="Incluir">+</button>
         </div>`;
       }
@@ -226,7 +260,7 @@
     preview.innerHTML = `<div class="iobios-preview-footer"><p class="iobios-preview-summary">${summaryText}</p>${hoursLine}</div>` + html;
 
     const saveBtn = document.getElementById('iobios-panel-save');
-    if (saveBtn) saveBtn.disabled = insertRecords === 0 && deleteCount === 0;
+    if (saveBtn) saveBtn.disabled = (insertRecords === 0 && deleteCount === 0) || (_s.conflictKeys && _s.conflictKeys.size > 0);
   }
 
   Object.assign(window.__iobios, { renderTAList: renderList });

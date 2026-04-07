@@ -9,7 +9,7 @@
       chrome.storage.sync.get({
         enabled: true,
         timeAllocations: [{ project: 'ATS/SCS Roadmap Acceleration', hours: 8 }],
-        rules: { skipWeekends: true, skipHolidays: false, skipVacations: false, maxHoursPerDay: 8 },
+        rules: { skipWeekends: true, skipHolidays: false, skipVacations: true, skipLeave: true, maxHoursPerDay: 8 },
         timeSheets: {
           period1: { clockIn: '09:00', clockOut: '14:00' },
           period2: { clockIn: '14:30', clockOut: '17:30' },

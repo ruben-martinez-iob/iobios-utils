@@ -17,26 +17,69 @@
     const toVal   = document.getElementById('iobios-date-to').value;
     if (!fromVal || !toVal) { window.__iobios.closePanel(); return; }
 
+    // Pre-save validation: detect projects that would duplicate an existing allocation
+    _s.conflictKeys = new Set();
+    if (_s.cachedData) {
+      for (const [dateKey, existingAllocs] of _s.cachedData.existingMap) {
+        const activeProjects = new Set(
+          existingAllocs
+            .filter(a => !_s.markedForDelete.has(a))
+            .map(a => a.project)
+        );
+        if (activeProjects.size === 0) continue;
+
+        for (const alloc of config.timeAllocations) {
+          const ck = `${dateKey}::${alloc.project}`;
+          if (!_s.manualExclude.has(ck) && activeProjects.has(alloc.project)) {
+            _s.conflictKeys.add(ck);
+          }
+        }
+
+        for (const row of (_s.manualRows.get(dateKey) || [])) {
+          const project = row.project.trim();
+          if (project && activeProjects.has(project)) {
+            _s.conflictKeys.add(`manual::${dateKey}::${row.uid}`);
+          }
+        }
+      }
+    }
+
+    if (_s.conflictKeys.size > 0) {
+      const preview = document.getElementById('iobios-preview');
+      if (preview) window.__iobios.renderTAList(preview, config);
+      const n = _s.conflictKeys.size;
+      window.__iobios.showToast(
+        `${n} proyecto${n !== 1 ? 's' : ''} ya existe${n !== 1 ? 'n' : ''} en ese día — edita las horas del registro existente`,
+        'error'
+      );
+      return;
+    }
+
     const saveBtn = document.getElementById('iobios-panel-save');
     if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Guardando...'; }
 
     const dateFrom = window.__iobios.fromDateInput(fromVal);
     const dateTo   = window.__iobios.fromDateInput(toVal);
-    const email    = window.__iobios.getCurrentUserEmail();
 
     // Deletions
     let deleted = 0, deleteErrors = 0;
+    const deletedKeys = new Set();
     for (const alloc of _s.markedForDelete) {
       const res = await window.__iobios.timeAllocationsDb.deleteAllocation(alloc);
-      if (res.ok) deleted++; else deleteErrors++;
+      if (res.ok) { deleted++; deletedKeys.add(`${alloc.date.toDateString()}::${alloc.project}`); }
+      else deleteErrors++;
     }
+    // Force a fresh read from IndexedDB for the insertions phase so any
+    // softDeleteInDb patches are visible and the in-memory filter is not stale.
+    if (deleted > 0) window.__iobios.timeAllocationsDb.clearCache();
 
     // Insertions
-    const [dates, existing, vacations] = await Promise.all([
+    const [dates, existing, nonWorkingDays] = await Promise.all([
       window.__iobios.buildDateRange(dateFrom, dateTo, { ...config.rules, skipHolidays: true }),
       window.__iobios.timeAllocationsDb.getAllocations({ dateFrom, dateTo }),
-      window.__iobios.getApprovedVacations(email),
+      window.__iobios.getNonWorkingDays(config),
     ]);
+    const { vacationSet, leaveSet } = nonWorkingDays;
 
     // Composite keys already in DB: "dateStr::project"
     const existingKeys = new Set(existing.map(a => `${a.date.toDateString()}::${a.project}`));
@@ -53,7 +96,6 @@
         .filter(([, h]) => h >= maxH)
         .map(([dk]) => dk)
     );
-    const vacationSet  = new Set(vacations.map(v => v.toDateString()));
 
     // Dates eligible from the range (not deleted this session)
     const allEligible = dates;
@@ -64,7 +106,7 @@
       .filter(d => !allEligible.some(e => e.toDateString() === d.toDateString()));
 
     const candidateDates = [
-      ...allEligible.filter(d => !vacationSet.has(d.toDateString())),
+      ...allEligible.filter(d => !vacationSet.has(d.toDateString()) && !leaveSet.has(d.toDateString())),
       ...manualOnly,
     ];
 
@@ -74,6 +116,7 @@
       for (const alloc of config.timeAllocations) {
         const compositeKey = `${dateKey}::${alloc.project}`;
         if (existingKeys.has(compositeKey)) continue;                          // already in DB
+        if (deletedKeys.has(compositeKey)) continue;                           // just deleted this session
         if (_s.manualExclude.has(compositeKey)) continue;                      // manually excluded
         if (fullDates.has(dateKey) && !_s.manualInclude.has(dateKey)) continue; // day is full
 

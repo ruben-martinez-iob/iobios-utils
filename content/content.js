@@ -134,7 +134,9 @@
       return true; // keep message channel open for async response
     }
     if (msg.action === 'getHolidays') {
-      window.__iobios.getHolidays()
+      // Get current config to include custom holidays
+      window.__iobios.getConfig()
+        .then(config => window.__iobios.getHolidays(config))
         .then(holidays => sendResponse({
           holidays: holidays.map(h => ({
             date: window.__iobios.toDateInputValue(h.date),
