@@ -47,18 +47,25 @@ function renderHolidaysTab(holidays) {
   desc.className = 'section-desc';
   desc.textContent = 'Festivos propios por año. Se excluyen al generar imputaciones cuando "Excluir festivos" está activo.';
 
+  section.appendChild(h2);
+  section.appendChild(desc);
+
+  const buttonsRow = document.createElement('div');
+  buttonsRow.className = 'buttons-row';
+
   const importBtn = document.createElement('button');
   importBtn.type = 'button';
   importBtn.className = 'btn-import-db';
   importBtn.textContent = 'Importar desde DB';
 
-  const headerRow = document.createElement('div');
-  headerRow.className = 'section-header-row';
-  headerRow.appendChild(h2);
-  headerRow.appendChild(importBtn);
+  const csvBtn = document.createElement('button');
+  csvBtn.type = 'button';
+  csvBtn.className = 'btn-import-csv';
+  csvBtn.textContent = 'Cargar CSV';
 
-  section.appendChild(headerRow);
-  section.appendChild(desc);
+  buttonsRow.appendChild(importBtn);
+  buttonsRow.appendChild(csvBtn);
+  section.appendChild(buttonsRow);
 
   const yearTabsBar = document.createElement('div');
   yearTabsBar.className = 'year-tabs';
@@ -96,6 +103,28 @@ function renderHolidaysTab(holidays) {
     panel.className = 'year-panel';
     panel.dataset.year = year;
 
+    const headerRow = document.createElement('div');
+    headerRow.className = 'year-header-row';
+
+    const sortBtn = document.createElement('button');
+    sortBtn.type = 'button';
+    sortBtn.className = 'btn-sort';
+    sortBtn.textContent = 'Ordenar por fecha';
+    sortBtn.addEventListener('click', () => {
+      const rows = Array.from(dateList.querySelectorAll('.holiday-row'));
+      rows.sort((a, b) => {
+        const dateA = a.querySelector('.holiday-date').value;
+        const dateB = b.querySelector('.holiday-date').value;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        return dateA.localeCompare(dateB);
+      });
+      dateList.innerHTML = '';
+      rows.forEach(row => dateList.appendChild(row));
+    });
+
+    headerRow.appendChild(sortBtn);
+
     const dateList = document.createElement('div');
     dateList.className = 'holiday-list';
 
@@ -111,6 +140,7 @@ function renderHolidaysTab(holidays) {
       dateList.lastElementChild.querySelector('.holiday-date').focus();
     });
 
+    panel.appendChild(headerRow);
     panel.appendChild(dateList);
     panel.appendChild(addBtn);
     yearPanelsContainer.appendChild(panel);
@@ -171,6 +201,81 @@ function renderHolidaysTab(holidays) {
         showStatus(added > 0 ? `${added} festivo(s) importado(s) de la DB.` : 'No hay festivos nuevos en la DB.', 'success');
       });
     });
+  });
+
+  // CSV import functionality
+  csvBtn.addEventListener('click', () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv';
+    input.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const csv = event.target.result;
+          const lines = csv.split('\n').filter(line => line.trim());
+          
+          if (lines.length < 2) {
+            showStatus('El CSV debe tener al menos una fila de datos.', 'error');
+            return;
+          }
+          
+          const byYear = {};
+          let added = 0;
+          
+          // Skip header line, process data lines
+          for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+            
+            // Parse CSV line (handle quoted commas)
+            const match = line.match(/^"?([^"]+)"?,\s*"?([^"]*)"?$/);
+            if (!match) continue;
+            
+            const [, dateStr, name] = match;
+            
+            // Convert dd/mm/yyyy to yyyy-mm-dd for input
+            const dateParts = dateStr.split('/');
+            if (dateParts.length !== 3) continue;
+            
+            const [day, month, year] = dateParts;
+            const formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+            
+            // Group by year
+            if (!byYear[year]) byYear[year] = [];
+            byYear[year].push({ date: formattedDate, name: name.trim() });
+          }
+          
+          // Add to UI
+          Object.entries(byYear).forEach(([year, entries]) => {
+            addYearSection(parseInt(year, 10));
+            const panel = yearPanelsContainer.querySelector(`.year-panel[data-year="${year}"]`);
+            if (!panel) return;
+            const dateList = panel.querySelector('.holiday-list');
+            const existing = new Set(
+              Array.from(dateList.querySelectorAll('.holiday-date')).map((i) => i.value)
+            );
+            entries.forEach((entry) => {
+              if (!existing.has(entry.date)) { 
+                addHolidayRow(dateList, entry); 
+                added++; 
+              }
+            });
+          });
+          
+          showStatus(`${added} festivo(s) importado(s) del CSV.`, 'success');
+        } catch (error) {
+          showStatus('Error al procesar el CSV: ' + error.message, 'error');
+        }
+      };
+      
+      reader.readAsText(file);
+    });
+    
+    input.click();
   });
 
   section.appendChild(yearTabsBar);

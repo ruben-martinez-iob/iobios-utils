@@ -447,6 +447,52 @@ h1 {
   cursor: default;
 }
 
+.btn-import-csv {
+  background: none;
+  border: 1px solid #34a853;
+  border-radius: 4px;
+  color: #34a853;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-import-csv:hover {
+  background: #34a853;
+  color: #fff;
+}
+
+.buttons-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.year-header-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.btn-sort {
+  background: none;
+  border: 1px solid #5f6368;
+  border-radius: 4px;
+  color: #5f6368;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-sort:hover {
+  background: #5f6368;
+  color: #fff;
+}
+
 /* ── Year sub-tabs (Festivos) ─────────────────────────────────────────────── */
 .year-tabs {
   display: flex;
@@ -515,16 +561,30 @@ h1 {
 }
 
 .holiday-date {
+  width: 120px;
+  min-width: 120px;
+  padding: 7px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  transition: border-color 0.15s;
+}
+
+.holiday-date:focus {
+  outline: none;
+  border-color: #1a73e8;
+}
+
+.holiday-name {
   flex: 1;
   padding: 7px 10px;
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 13px;
-  color: #333;
   transition: border-color 0.15s;
 }
 
-.holiday-date:focus {
+.holiday-name:focus {
   outline: none;
   border-color: #1a73e8;
 }
