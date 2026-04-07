@@ -14,6 +14,7 @@
           period1: { clockIn: '09:00', clockOut: '14:00' },
           period2: { clockIn: '14:30', clockOut: '17:30' },
         },
+        holidays: {}, // Explicitly request holidays
       }, resolve)
     );
   }

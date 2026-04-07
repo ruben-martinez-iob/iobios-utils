@@ -58,12 +58,18 @@
         return;
       }
 
+      // Get fresh config to include latest custom holidays
+      const freshConfig = await window.__iobios.getConfig();
+      console.log('[ioBios] TA Panel - freshConfig:', freshConfig);
+      console.log('[ioBios] TA Panel - freshConfig.holidays:', freshConfig.holidays);
+
       if (!_s.cachedData || forceRefetch) {
         preview.innerHTML = '<p class="iobios-loading">Calculando...</p>';
         const dateFrom = fromDate;
         const dateTo   = toDate;
+        
         const [nonWorkingDays, existing] = await Promise.all([
-          window.__iobios.getNonWorkingDays(config),
+          window.__iobios.getNonWorkingDays(freshConfig),
           window.__iobios.timeAllocationsDb.getAllocations({ dateFrom, dateTo }),
         ]);
 
@@ -89,7 +95,7 @@
         };
       }
 
-      window.__iobios.renderTAList(document.getElementById('iobios-preview'), config);
+      window.__iobios.renderTAList(document.getElementById('iobios-preview'), freshConfig);
     }
 
     function shiftMonth(delta) {

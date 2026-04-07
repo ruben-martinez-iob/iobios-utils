@@ -54,12 +54,18 @@
         return;
       }
 
+      // Get fresh config to include latest custom holidays
+      const freshConfig = await window.__iobios.getConfig();
+      console.log('[ioBios] TS Panel - freshConfig:', freshConfig);
+      console.log('[ioBios] TS Panel - freshConfig.holidays:', freshConfig.holidays);
+
       if (!_s.cachedData || forceRefetch) {
         preview.innerHTML = '<p class="iobios-loading">Calculando...</p>';
         const dateFrom = fromDate;
         const dateTo   = toDate;
+        
         const [nonWorkingDays, existing] = await Promise.all([
-          window.__iobios.getNonWorkingDays(config),
+          window.__iobios.getNonWorkingDays(freshConfig),
           window.__iobios.timeSheetsDb.getTimesheets({ dateFrom, dateTo }),
         ]);
         const allDates = [];
@@ -80,7 +86,7 @@
       }
 
       try {
-        window.__iobios.renderTSList(document.getElementById('iobios-preview'), config);
+        window.__iobios.renderTSList(document.getElementById('iobios-preview'), freshConfig);
       } catch (e) {
         console.error('[ioBios] timesheets renderList error:', e);
         document.getElementById('iobios-preview').innerHTML =

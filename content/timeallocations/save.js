@@ -75,7 +75,7 @@
 
     // Insertions
     const [dates, existing, nonWorkingDays] = await Promise.all([
-      window.__iobios.buildDateRange(dateFrom, dateTo, { ...config.rules, skipHolidays: true }),
+      window.__iobios.buildDateRange(dateFrom, dateTo, { ...config.rules, skipHolidays: true }, config),
       window.__iobios.timeAllocationsDb.getAllocations({ dateFrom, dateTo }),
       window.__iobios.getNonWorkingDays(config),
     ]);
