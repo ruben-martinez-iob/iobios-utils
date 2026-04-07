@@ -36,9 +36,18 @@ function renderAllocationRow(project = '', hours = 8) {
 
   function showSuggestions() {
     const q = projectInput.value.toLowerCase();
-    const matches = _availableProjects.filter((p) => p.toLowerCase().includes(q));
+    // If input is empty, show all projects; otherwise filter
+    const matches = q.trim() === '' 
+      ? _availableProjects 
+      : _availableProjects.filter((p) => p.toLowerCase().includes(q));
+    
     ul.innerHTML = '';
-    if (matches.length === 0) { ul.hidden = true; return; }
+    if (matches.length === 0) { 
+      ul.hidden = true;
+      wrapper.removeAttribute('data-has-suggestions');
+      return; 
+    }
+    
     matches.forEach((p) => {
       const li = document.createElement('li');
       li.className = 'project-suggestion-item';
@@ -47,15 +56,23 @@ function renderAllocationRow(project = '', hours = 8) {
       li.addEventListener('click', () => {
         projectInput.value = p;
         ul.hidden = true;
+        wrapper.removeAttribute('data-has-suggestions');
       });
       ul.appendChild(li);
     });
     ul.hidden = false;
+    wrapper.setAttribute('data-has-suggestions', 'true');
   }
 
   projectInput.addEventListener('input', showSuggestions);
   projectInput.addEventListener('focus', showSuggestions);
-  projectInput.addEventListener('blur', () => { ul.hidden = true; });
+  projectInput.addEventListener('blur', () => { 
+    // Delay hiding to allow click on suggestions
+    setTimeout(() => {
+      ul.hidden = true;
+      wrapper.removeAttribute('data-has-suggestions');
+    }, 150);
+  });
 
   wrapper.appendChild(projectInput);
   wrapper.appendChild(ul);
@@ -107,6 +124,20 @@ document.getElementById('add-allocation').addEventListener('click', () => {
   renderAllocationRow('', 8);
   document.getElementById('allocations-list').lastElementChild.querySelector('.alloc-project').focus();
 });
+
+// Add reload projects button
+const reloadBtn = document.createElement('button');
+reloadBtn.type = 'button';
+reloadBtn.className = 'btn-reload-projects';
+reloadBtn.textContent = 'Recargar Proyectos';
+reloadBtn.addEventListener('click', () => {
+  _availableProjects = [];
+  loadProjects();
+});
+
+// Insert reload button after section description
+const sectionDesc = document.querySelector('#tab-time-allocations .section-desc');
+sectionDesc.parentNode.insertBefore(reloadBtn, sectionDesc.nextSibling);
 
 document.getElementById('max-hours').addEventListener('input', () => {
   checkHoursWarning();

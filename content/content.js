@@ -146,6 +146,13 @@
         .catch(() => sendResponse({ holidays: [] }));
       return true;
     }
+    if (msg.action === 'checkAbsencesDb') {
+      // Check if absences DB is available
+      window.__iobios.getHolidays({})
+        .then(holidays => sendResponse({ hasAbsencesDb: true }))
+        .catch(() => sendResponse({ hasAbsencesDb: false }));
+      return true;
+    }
   });
 
 })();

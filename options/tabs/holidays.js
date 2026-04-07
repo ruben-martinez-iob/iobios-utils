@@ -164,6 +164,50 @@ function renderHolidaysTab(holidays) {
 
   yearsToShow.forEach((y) => addYearSection(y));
 
+  // Check if absences DB is available and disable import button if not
+  function checkAbsencesDbAvailability() {
+    chrome.tabs.query({}, (tabs) => {
+      const appsheetTab = tabs.find((t) => t.url && t.url.includes('appsheet.com'));
+      if (!appsheetTab) {
+        importBtn.disabled = true;
+        importBtn.title = 'Abre la aplicación AppSheet primero para importar desde DB';
+        return;
+      }
+      
+      chrome.tabs.sendMessage(appsheetTab.id, { action: 'checkAbsencesDb' }, (resp) => {
+        if (chrome.runtime.lastError || !resp || !resp.hasAbsencesDb) {
+          importBtn.disabled = true;
+          importBtn.title = 'No se encontró la DB de ausencias. Abre la app de Absences primero.';
+        } else {
+          importBtn.disabled = false;
+          importBtn.title = '';
+        }
+      });
+    });
+  }
+
+  // Initial check
+  checkAbsencesDbAvailability();
+
+  // Re-check when tab is activated or every 5 seconds
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      checkAbsencesDbAvailability();
+    }
+  });
+
+  // Also re-check periodically when options page is visible
+  const checkInterval = setInterval(() => {
+    if (!document.hidden) {
+      checkAbsencesDbAvailability();
+    }
+  }, 5000);
+
+  // Clean up interval when page unloads
+  window.addEventListener('beforeunload', () => {
+    clearInterval(checkInterval);
+  });
+
   importBtn.addEventListener('click', () => {
     chrome.tabs.query({}, (tabs) => {
       const appsheetTab = tabs.find((t) => t.url && t.url.includes('appsheet.com'));
