@@ -585,6 +585,11 @@
   font-weight: 600;
 }
 
+.iobios-preview-row.iobios-24h-excess {
+  background-color: #ffebee !important;
+  border-left: 4px solid #c62828 !important;
+}
+
 /* ── Edit mode buttons ────────────────────────────────────────────────────── */
 
 .iobios-toggle-edit {

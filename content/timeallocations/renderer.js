@@ -85,9 +85,10 @@
         : 0;
       const totalManualH = manualRowsForDay.reduce((s, r) => s + Number(r.hours || 0), 0);
       const totalDayH = totalExistingHours + totalNewH + totalManualH;
-      const dayLabelClass = totalDayH > dayMaxH ? ' iobios-day-hours-excess'
-        : totalDayH < dayMaxH * 0.99 ? ' iobios-day-hours-warning'
+      const dayLabelClass = totalDayH > 24 ? ' iobios-day-hours-excess'
+        : totalDayH > dayMaxH ? ' iobios-day-hours-warning'
         : '';
+      const dayRowClass = totalDayH > 24 ? ' iobios-24h-excess' : '';
       const dayLabelHtml = totalDayH > 0
         ? `<span class="iobios-day-hours-label${dayLabelClass}" data-day="${key}">${fmtH(totalDayH)}</span>`
         : '';
@@ -111,7 +112,7 @@
             : parseHoursFromHHMMSS(alloc.hours);
           if (isDeleted) {
             deleteCount++;
-            html += `<div class="iobios-preview-row iobios-status-delete${key === todayKey && firstRow ? ' iobios-today' : ''}">
+            html += `<div class="iobios-preview-row iobios-status-delete${key === todayKey && firstRow ? ' iobios-today' : ''}${dayRowClass}">
               <span class="iobios-preview-date${!firstRow ? ' iobios-date-continuation' : ''}">${firstRow ? window.__iobios.formatDayLabel(date) : ''}</span>
               <span class="iobios-preview-detail">${alloc.project} — ${alloc.hours}</span>
               <span class="iobios-preview-badge iobios-badge-delete">Borrar</span>
@@ -119,7 +120,7 @@
               <button class="iobios-toggle-btn iobios-toggle-undelete" data-date="${key}" data-project="${alloc.project}" data-id="${alloc.id}" title="Cancelar borrado">✕</button>
             </div>`;
           } else if (isEditing) {
-            html += `<div class="iobios-preview-row iobios-status-existing${key === todayKey && firstRow ? ' iobios-today' : ''}">
+            html += `<div class="iobios-preview-row iobios-status-existing${key === todayKey && firstRow ? ' iobios-today' : ''}${dayRowClass}">
               <span class="iobios-preview-date${!firstRow ? ' iobios-date-continuation' : ''}">${firstRow ? window.__iobios.formatDayLabel(date) : ''}</span>
               <input type="text" class="iobios-alloc-project-input iobios-alloc-hours-ro" value="${alloc.project}" disabled>
               <input type="number" class="iobios-alloc-hours-input" data-date="${key}" data-project="${alloc.project}" value="${existingH}" min="0.5" max="24" step="0.5">
@@ -129,7 +130,7 @@
               <button class="iobios-toggle-btn iobios-cancel-edit" data-date="${key}" data-project="${alloc.project}" title="Cancelar">✕</button>
             </div>`;
           } else {
-            html += `<div class="iobios-preview-row iobios-status-existing${key === todayKey && firstRow ? ' iobios-today' : ''}">
+            html += `<div class="iobios-preview-row iobios-status-existing${key === todayKey && firstRow ? ' iobios-today' : ''}${dayRowClass}">
               <span class="iobios-preview-date${!firstRow ? ' iobios-date-continuation' : ''}">${firstRow ? window.__iobios.formatDayLabel(date) : ''}</span>
               <input type="text" class="iobios-alloc-project-input iobios-alloc-hours-ro" value="${alloc.project}" disabled>
               <input type="number" class="iobios-alloc-hours-input iobios-alloc-hours-ro" value="${existingH}" disabled>
@@ -160,7 +161,7 @@
               const customH = _s.customHours.get(`${key}::${alloc.project}`) ?? alloc.hours;
               hoursToInsert += Number(customH);
               const isConflict = _s.conflictKeys && _s.conflictKeys.has(`${key}::${alloc.project}`);
-            html += `<div class="iobios-preview-row iobios-status-new${key === todayKey && firstRow ? ' iobios-today' : ''}">
+            html += `<div class="iobios-preview-row iobios-status-new${key === todayKey && firstRow ? ' iobios-today' : ''}${dayRowClass}">
                 <span class="iobios-preview-date${!firstRow ? ' iobios-date-continuation' : ''}">${firstRow ? window.__iobios.formatDayLabel(date) : ''}</span>
                 <input type="text" class="iobios-alloc-project-input${isConflict ? ' iobios-input-error' : ''}" data-date="${key}" data-project="${alloc.project}" value="${_s.customProjects.get(`${key}::${alloc.project}`) ?? alloc.project}">
                 <input type="number" class="iobios-alloc-hours-input" data-date="${key}" data-project="${alloc.project}" value="${customH}" min="0.5" max="24" step="0.5">
@@ -169,7 +170,7 @@
                 <button class="iobios-toggle-btn iobios-toggle-exclude" data-date="${key}" data-project="${alloc.project}" title="No añadir">✕</button>
               </div>`;
             } else {
-              html += `<div class="iobios-preview-row iobios-status-excluded${key === todayKey && firstRow ? ' iobios-today' : ''}">
+              html += `<div class="iobios-preview-row iobios-status-excluded${key === todayKey && firstRow ? ' iobios-today' : ''}${dayRowClass}">
                 <span class="iobios-preview-date${!firstRow ? ' iobios-date-continuation' : ''}">${firstRow ? window.__iobios.formatDayLabel(date) : ''}</span>
                 <span class="iobios-preview-detail">${alloc.project}</span>
                 <button class="iobios-toggle-btn iobios-toggle-include" data-date="${key}" data-project="${alloc.project}" title="Añadir">+</button>
@@ -186,7 +187,7 @@
             hoursToInsert += Number(row.hours || 0);
           }
           const isManualConflict = _s.conflictKeys && _s.conflictKeys.has(`manual::${key}::${row.uid}`);
-          html += `<div class="iobios-preview-row iobios-status-new${key === todayKey && firstRow ? ' iobios-today' : ''}">
+          html += `<div class="iobios-preview-row iobios-status-new${key === todayKey && firstRow ? ' iobios-today' : ''}${dayRowClass}">
             <span class="iobios-preview-date${!firstRow ? ' iobios-date-continuation' : ''}">${firstRow ? window.__iobios.formatDayLabel(date) : ''}</span>
             <input type="text" class="iobios-manual-project-input${isManualConflict ? ' iobios-input-error' : ''}" data-date="${key}" data-uid="${row.uid}" placeholder="Proyecto" value="${row.project}">
             <input type="number" class="iobios-manual-hours-input" data-date="${key}" data-uid="${row.uid}" value="${row.hours}" min="0.5" max="24" step="0.5">

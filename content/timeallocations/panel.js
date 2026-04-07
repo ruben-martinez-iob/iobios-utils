@@ -298,13 +298,22 @@
                   .reduce((sum, a) => sum + Number(_s.customHours.get(`${key}::${a.project}`) ?? a.hours), 0)
               : 0;
             const totalDayH = totalExistH + totalNewH;
-            const dayLabelClass = totalDayH > dayMaxH ? ' iobios-day-hours-excess'
-              : totalDayH < dayMaxH * 0.99 ? ' iobios-day-hours-warning' : '';
+            const dayLabelClass = totalDayH > 24 ? ' iobios-day-hours-excess'
+              : totalDayH > dayMaxH ? ' iobios-day-hours-warning' : '';
+            const dayRowClass = totalDayH > 24 ? ' iobios-24h-excess' : '';
             const label = document.querySelector(`.iobios-day-hours-label[data-day="${key}"]`);
             if (label) {
               label.textContent = fmtH(totalDayH);
-              label.className = 'iobios-day-hours-label' + dayLabelClass;
+              label.className = `iobios-day-hours-label${dayLabelClass}`;
             }
+            // Apply row class to all rows for this day
+            document.querySelectorAll(`.iobios-preview-row[data-date="${key}"], .iobios-preview-row:has([data-date="${key}"])`).forEach(row => {
+              if (!row.classList.contains('iobios-24h-excess') && dayRowClass) {
+                row.classList.add('iobios-24h-excess');
+              } else if (!dayRowClass) {
+                row.classList.remove('iobios-24h-excess');
+              }
+            });
           }
         }
       } else if (projectInput) {
