@@ -16,11 +16,10 @@
   function renderTimeAllocationsBody(container, config) {
     const _s = window.__iobios._taState;
 
-    _s.manualInclude   = new Set();
-    _s.manualExclude   = new Set();
+    _s.rowStates = new Map();
     _s.markedForDelete = new Set();
-    _s.customHours     = new Map();
-    _s.customProjects  = new Map();
+    _s.customHours = new Map();
+    _s.customProjects = new Map();
     _s.editingRows     = new Set();
     _s.manualRows      = new Map();
     _s.cachedData      = null;
@@ -104,11 +103,10 @@
       fromInput.value = window.__iobios.toDisplayDate(base);
       toInput.value   = window.__iobios.toDisplayDate(new Date(base.getFullYear(), base.getMonth() + 1, 0));
       _s.cachedData      = null;
-      _s.manualInclude   = new Set();
-      _s.manualExclude   = new Set();
+      _s.rowStates = new Map();
       _s.markedForDelete = new Set();
-      _s.customHours     = new Map();
-      _s.customProjects  = new Map();
+      _s.customHours = new Map();
+      _s.customProjects = new Map();
       _s.editingRows     = new Set();
       _s.manualRows      = new Map();
       updatePreview(true);
@@ -117,9 +115,42 @@
     document.getElementById('iobios-preview').addEventListener('click', async (e) => {
       const btn = e.target.closest('button');
       if (!btn) return;
+      const _s = window.__iobios._taState;
       const key     = btn.dataset.date;
       const project = btn.dataset.project;
       if (!key) return;
+
+      // Helper function to get or create rowState for a day
+      function getOrCreateRowState(key, date, cached) {
+        console.log('DEBUG: getOrCreateRowState called for', key);
+        console.log('DEBUG: existing rowState?', !!_s.rowStates.has(key));
+        
+        if (!_s.rowStates.has(key)) {
+          console.log('DEBUG: creating new rowState for', key);
+          const dow = date.getDay();
+          const originalState = {
+            isWeekend: dow === 0 || dow === 6,
+            isHoliday: cached?.holidaySet?.has(key) || false,
+            isVacation: cached?.vacationSet?.has(key) || false,
+            isLeave: cached?.leaveSet?.has(key) || false,
+            isFuture: date > new Date(),
+            holidayName: cached?.holidayNameMap?.get(key) || '',
+            leaveDetail: cached?.leaveDetailMap?.get(key) || '',
+            inAddList: false
+          };
+          
+          _s.rowStates.set(key, {
+            originalState: {...originalState},
+            inAddList: false
+          });
+        } else {
+          console.log('DEBUG: using existing rowState for', key);
+        }
+        
+        const result = _s.rowStates.get(key);
+        console.log('DEBUG: returning rowState', result);
+        return result;
+      }
 
       if (btn.classList.contains('iobios-toggle-delete')) {
         const id = btn.dataset.id;
@@ -133,14 +164,19 @@
         if (alloc) _s.markedForDelete.delete(alloc);
       } else if (btn.classList.contains('iobios-toggle-include')) {
         if (project) {
-          // Re-include a specific excluded project row
-          _s.manualExclude.delete(`${key}::${project}`);
-        } else {
-          // Force-include whole day (naturally excluded or full days)
-          _s.manualInclude.add(key);
-          for (const excKey of [..._s.manualExclude]) {
-            if (excKey.startsWith(`${key}::`)) _s.manualExclude.delete(excKey);
+          // Toggle exclusion for a specific project row
+          const excludeKey = `${key}::${project}`;
+          if (_s.customHours.has(excludeKey)) {
+            _s.customHours.delete(excludeKey);
+          } else {
+            _s.customHours.set(excludeKey, 0);
           }
+        } else {
+          // Toggle manual inclusion using rowStates
+          const rowState = getOrCreateRowState(key, new Date(key), _s.cachedData);
+          
+          // Toggle inAddList
+          rowState.inAddList = !rowState.inAddList;
         }
       } else if (btn.classList.contains('iobios-add-manual-row')) {
         if (!_s.manualRows.has(key)) _s.manualRows.set(key, []);
@@ -153,8 +189,16 @@
           if (idx !== -1) rows.splice(idx, 1);
         }
         _s.conflictKeys.delete(`manual::${key}::${uid}`);
-      } else if (btn.classList.contains('iobios-toggle-exclude') && project) {
-        _s.manualExclude.add(`${key}::${project}`);
+      } else if (btn.classList.contains('iobios-toggle-exclude')) {
+        if (project) {
+          // Exclude specific project: set hours to 0 in customHours
+          const excludeKey = `${key}::${project}`;
+          _s.customHours.set(excludeKey, 0);
+        } else {
+          // Remove day from add list
+          const rowState = getOrCreateRowState(key, new Date(key), _s.cachedData);
+          rowState.inAddList = false;
+        }
       } else if (btn.classList.contains('iobios-toggle-edit')) {
         _s.editingRows.add(`${key}::${project}`);
       } else if (btn.classList.contains('iobios-cancel-edit')) {
@@ -202,7 +246,6 @@
         const activeExisting = new Set(dayAllocs.filter(a => !_s.markedForDelete.has(a)).map(a => a.project));
         const configNames = new Set(
           config.timeAllocations
-            .filter(a => !_s.manualExclude.has(`${key}::${a.project}`))
             .map(a => _s.customProjects.get(`${key}::${a.project}`) ?? a.project)
         );
         const rows = _s.manualRows.get(key) || [];
@@ -237,9 +280,12 @@
           if (val) {
             const dayAllocs = (_s.cachedData && _s.cachedData.existingMap.get(key)) || [];
             const activeExisting = new Set(dayAllocs.filter(a => !_s.markedForDelete.has(a)).map(a => a.project));
-            const configNames = config.timeAllocations
-              .filter(a => !_s.manualExclude.has(`${key}::${a.project}`))
-              .map(a => _s.customProjects.get(`${key}::${a.project}`) ?? a.project);
+            
+            // Solo validar contra proyectos de configuración si el día no está manualmente incluido
+            const configNames = _s.rowStates.get(key)?.inAddList 
+              ? [] // Si está manualmente incluido, no validar contra config
+              : config.timeAllocations.map(a => _s.customProjects.get(`${key}::${a.project}`) ?? a.project);
+            
             const otherManual = rows.filter(r => r.uid !== uid).map(r => r.project).filter(Boolean);
             const takenNames = new Set([...activeExisting, ...configNames, ...otherManual]);
             if (takenNames.has(val)) {
@@ -287,14 +333,14 @@
                 ? _s.customHours.get(ek) : parseHoursFromHHMMSS(a.hours));
             }, 0);
             const missingAllocs = config.timeAllocations.filter(a => !existingProjects.has(a.project));
-            const isDayFull = totalExistH >= maxH && !_s.manualInclude.has(key);
+            const isDayFull = totalExistH >= maxH;
             const naturallyExcluded = _s.cachedData.holidaySet.has(key) || _s.cachedData.vacationSet.has(key) ||
               (_s.cachedData.leaveSet && _s.cachedData.leaveSet.has(key)) ||
               (config.rules.skipWeekends && (date.getDay() === 0 || date.getDay() === 6)) ||
               date > new Date();
             const showMissingRows = !naturallyExcluded && !isDayFull;
             const totalNewH = showMissingRows
-              ? missingAllocs.filter(a => !_s.manualExclude.has(`${key}::${a.project}`))
+              ? missingAllocs
                   .reduce((sum, a) => sum + Number(_s.customHours.get(`${key}::${a.project}`) ?? a.hours), 0)
               : 0;
             const totalDayH = totalExistH + totalNewH;
@@ -328,9 +374,11 @@
               .filter(a => !_s.markedForDelete.has(a))
               .map(a => a.project)
           );
-          const otherNewNames = config.timeAllocations
-            .filter(a => a.project !== project && !_s.manualExclude.has(`${key}::${a.project}`))
-            .map(a => _s.customProjects.get(`${key}::${a.project}`) ?? a.project);
+          const otherNewNames = _s.rowStates.get(key)?.inAddList
+            ? [] // Si está manualmente incluido, no validar contra otros proyectos de config
+            : config.timeAllocations
+              .filter(a => a.project !== project)
+              .map(a => _s.customProjects.get(`${key}::${a.project}`) ?? a.project);
           const takenNames = new Set([...activeExisting, ...otherNewNames]);
           if (takenNames.has(val)) {
             projectInput.value = _s.customProjects.get(`${key}::${project}`) ?? project;

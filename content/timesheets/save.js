@@ -34,19 +34,20 @@
     const existingDates = new Set(existing.map(t => t.date.toDateString()));
 
     const allEligible = dates.filter(d =>
-      !existingDates.has(d.toDateString()) && !_s.markedForDelete.has(d.toDateString())
+      !existingDates.has(d.toDateString()) && 
+      !_s.markedForDelete.has(d.toDateString()) &&
+      !_s.manualExclude.has(d.toDateString())
     );
     const manualOnly = [..._s.manualInclude]
       .map(k => new Date(k))
       .filter(d => !existingDates.has(d.toDateString()) && !allEligible.some(e => e.toDateString() === d.toDateString()));
 
     const toInsert = [
-      ...allEligible.filter(d =>
+      ...manualOnly.filter(d =>
         !vacationSet.has(d.toDateString()) &&
         !leaveSet.has(d.toDateString()) &&
         !_s.manualExclude.has(d.toDateString())
       ),
-      ...manualOnly,
     ];
 
     let ok = 0, errors = 0;

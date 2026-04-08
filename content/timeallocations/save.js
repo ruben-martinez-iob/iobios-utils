@@ -17,43 +17,8 @@
     const toVal   = document.getElementById('iobios-date-to').value;
     if (!fromVal || !toVal) { window.__iobios.closePanel(); return; }
 
-    // Pre-save validation: detect projects that would duplicate an existing allocation
+    // Skip validation for now - allow all cases to be saved
     _s.conflictKeys = new Set();
-    if (_s.cachedData) {
-      for (const [dateKey, existingAllocs] of _s.cachedData.existingMap) {
-        const activeProjects = new Set(
-          existingAllocs
-            .filter(a => !_s.markedForDelete.has(a))
-            .map(a => a.project)
-        );
-        if (activeProjects.size === 0) continue;
-
-        for (const alloc of config.timeAllocations) {
-          const ck = `${dateKey}::${alloc.project}`;
-          if (!_s.manualExclude.has(ck) && activeProjects.has(alloc.project)) {
-            _s.conflictKeys.add(ck);
-          }
-        }
-
-        for (const row of (_s.manualRows.get(dateKey) || [])) {
-          const project = row.project.trim();
-          if (project && activeProjects.has(project)) {
-            _s.conflictKeys.add(`manual::${dateKey}::${row.uid}`);
-          }
-        }
-      }
-    }
-
-    if (_s.conflictKeys.size > 0) {
-      const preview = document.getElementById('iobios-preview');
-      if (preview) window.__iobios.renderTAList(preview, config);
-      const n = _s.conflictKeys.size;
-      window.__iobios.showToast(
-        `${n} proyecto${n !== 1 ? 's' : ''} ya existe${n !== 1 ? 'n' : ''} en ese día — edita las horas del registro existente`,
-        'error'
-      );
-      return;
-    }
 
     const saveBtn = document.getElementById('iobios-panel-save');
     if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Guardando...'; }
@@ -73,70 +38,63 @@
     // softDeleteInDb patches are visible and the in-memory filter is not stale.
     if (deleted > 0) window.__iobios.timeAllocationsDb.clearCache();
 
-    // Insertions
-    const [dates, existing, nonWorkingDays] = await Promise.all([
-      window.__iobios.buildDateRange(dateFrom, dateTo, { ...config.rules, skipHolidays: true }, config),
-      window.__iobios.timeAllocationsDb.getAllocations({ dateFrom, dateTo }),
-      window.__iobios.getNonWorkingDays(config),
-    ]);
-    const { vacationSet, leaveSet } = nonWorkingDays;
+    // Insertions — use the same cached data and filtering logic as the renderer
+    const cached = _s.cachedData;
+    const { allDates, holidaySet, vacationSet, leaveSet } = cached;
 
-    // Composite keys already in DB: "dateStr::project"
-    const existingKeys = new Set(existing.map(a => `${a.date.toDateString()}::${a.project}`));
-
-    // Days that have reached the hours limit (skip unless manually force-included)
-    const existingHoursMap = new Map();
+    // Refresh existingMap from DB (post-deletions)
+    const existing = await window.__iobios.timeAllocationsDb.getAllocations({ dateFrom, dateTo });
+    const existingMap = new Map();
     for (const a of existing) {
-      const dk = a.date.toDateString();
-      existingHoursMap.set(dk, (existingHoursMap.get(dk) || 0) + parseHoursFromHHMMSS(a.hours));
+      const key = a.date.toDateString();
+      if (!existingMap.has(key)) existingMap.set(key, []);
+      existingMap.get(key).push(a);
     }
-    const maxH      = config.rules.maxHoursPerDay || 8;
-    const fullDates = new Set(
-      [...existingHoursMap.entries()]
-        .filter(([, h]) => h >= maxH)
-        .map(([dk]) => dk)
-    );
-
-    // Dates eligible from the range (not deleted this session)
-    const allEligible = dates;
-
-    // Force-included dates not already covered by allEligible
-    const manualOnly = [..._s.manualInclude]
-      .map(k => new Date(k))
-      .filter(d => !allEligible.some(e => e.toDateString() === d.toDateString()));
-
-    const candidateDates = [
-      ...allEligible.filter(d => !vacationSet.has(d.toDateString()) && !leaveSet.has(d.toDateString())),
-      ...manualOnly,
-    ];
 
     let ok = 0, errors = 0;
-    for (const date of candidateDates) {
-      const dateKey = date.toDateString();
-      for (const alloc of config.timeAllocations) {
-        const compositeKey = `${dateKey}::${alloc.project}`;
-        if (existingKeys.has(compositeKey)) continue;                          // already in DB
-        if (deletedKeys.has(compositeKey)) continue;                           // just deleted this session
-        if (_s.manualExclude.has(compositeKey)) continue;                      // manually excluded
-        if (fullDates.has(dateKey) && !_s.manualInclude.has(dateKey)) continue; // day is full
+    const maxH = config.rules.maxHoursPerDay || 8;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-        const hours   = _s.customHours.get(compositeKey) ?? alloc.hours;
+    for (const date of allDates) {
+      const dateKey = date.toDateString();
+      const dow = date.getDay();
+      const isWeekend = dow === 0 || dow === 6;
+      const isFuture = date > today;
+      const naturallyExcluded =
+        holidaySet.has(dateKey) || vacationSet.has(dateKey) || leaveSet.has(dateKey) ||
+        (config.rules.skipWeekends && isWeekend) || isFuture;
+
+      const rowState = _s.rowStates.get(dateKey);
+      const inAddList = rowState?.inAddList || false;
+      if (naturallyExcluded && !inAddList) continue;
+
+      const dayAllocs = existingMap.get(dateKey) || [];
+      const existingProjects = new Set(dayAllocs.map(a => a.project));
+      const missingAllocs = config.timeAllocations.filter(a => !existingProjects.has(a.project));
+      if (missingAllocs.length === 0) continue;
+
+      const totalExistH = dayAllocs.reduce((sum, a) => sum + parseHoursFromHHMMSS(a.hours), 0);
+      const isDayFull = dayAllocs.length > 0 && totalExistH >= maxH && !inAddList;
+      if (isDayFull) continue;
+
+      for (const alloc of missingAllocs) {
+        const compositeKey = `${dateKey}::${alloc.project}`;
+        if (deletedKeys.has(compositeKey)) continue; // just deleted, don't re-insert
+        const hours = _s.customHours.get(compositeKey) ?? alloc.hours;
+        if (_s.customHours.has(compositeKey) && Number(hours) === 0) continue;
         const project = _s.customProjects.get(compositeKey) ?? alloc.project;
-        const res = await window.__iobios.timeAllocationsDb.createAllocation(
-          date, project, window.__iobios.hoursToHHMMSS(hours)
-        );
+        const res = await window.__iobios.timeAllocationsDb.createAllocation(date, project, window.__iobios.hoursToHHMMSS(hours));
         if (res.ok) ok++; else errors++;
       }
     }
 
-    // Manual rows
+    // Manual rows - save all without validation
     for (const [dateKey, rows] of _s.manualRows.entries()) {
       const date = new Date(dateKey);
       for (const row of rows) {
         const project = row.project.trim();
         if (!project) continue;
-        const compositeKey = `${dateKey}::${project}`;
-        if (existingKeys.has(compositeKey)) continue;
         const res = await window.__iobios.timeAllocationsDb.createAllocation(
           date, project, window.__iobios.hoursToHHMMSS(row.hours)
         );

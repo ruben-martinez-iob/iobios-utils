@@ -272,11 +272,6 @@
   background: #f3e5f5;
 }
 
-/* ── Estado: festivo/bank holiday (verde) ── */
-.iobios-status-bank-holiday {
-  background: #c8e6c9;
-}
-
 /* ── Estado: ausencia vacacional (morado) ── */
 .iobios-status-holiday-absence {
   background: #ede7f6;
@@ -285,6 +280,12 @@
 /* ── Estado: baja/permiso leave (amarillo) ── */
 .iobios-status-leave {
   background: #fff9c4;
+}
+
+/* ── Estado: fin de semana / vacaciones (azul claro) ── */
+.iobios-status-weekend,
+.iobios-status-vacation {
+  background: #e3f2fd;
 }
 
 /* ── Estado: a ignorar / excluido manualmente (amarillo) ── */
@@ -305,8 +306,6 @@
 /* ── Textos: gris oscuro en todos los estados ── */
 .iobios-status-existing .iobios-preview-date,
 .iobios-status-existing .iobios-preview-detail,
-.iobios-status-weekend .iobios-preview-date,
-.iobios-status-vacation .iobios-preview-date,
 .iobios-status-holiday .iobios-preview-date,
 .iobios-status-bank-holiday .iobios-preview-date,
 .iobios-status-bank-holiday .iobios-preview-detail,
@@ -458,56 +457,71 @@
   opacity: 0.85;
 }
 
-.iobios-preview-badge {
+/* Base styles para todos los badges */
+[class*="iobios-badge-"] {
   font-size: 11px;
   padding: 2px 7px;
   border-radius: 10px;
-  background: #fff3e0;
-  color: #e65100;
-  border: 1px solid #ffcc80;
   white-space: nowrap;
+  display: inline-block;
+  margin-right: 4px;
 }
 
 /* Badge: Fin de semana (azul, texto negro) */
 .iobios-badge-weekend {
   background: #90caf9;
   color: #111;
-  border-color: #64b5f6;
+  border: 1px solid #64b5f6;
 }
 
 /* Badge: Ausencia/Vacaciones (naranja, texto negro) */
 .iobios-badge-vacation {
   background: #ffb74d;
   color: #111;
-  border-color: #fb8c00;
+  border: 1px solid #fb8c00;
 }
 
 /* Badge: Festivo (morado, texto negro) */
 .iobios-badge-holiday {
   background: #ce93d8;
   color: #111;
-  border-color: #ab47bc;
+  border: 1px solid #ab47bc;
 }
 
-/* Badge: Bank Holiday / festivo (verde) */
+/* Badge: Bank Holiday / festivo (morado muy suave) */
 .iobios-badge-bank-holiday {
-  background: #a5d6a7;
-  color: #1b5e20;
-  border-color: #66bb6a;
+  background: #f8e1f9;
+  color: #000;
+  border: 1px solid #e1bee5;
 }
 
 /* Badge: Ausencia vacacional (morado) */
 .iobios-badge-holiday-absence {
   background: #d1c4e9;
   color: #311b92;
-  border-color: #9575cd;
+  border: 1px solid #9575cd;
 }
 
 /* Badge: Baja/Permiso leave (amarillo) */
 .iobios-badge-leave {
   background: #fff59d;
   color: #f57f17;
-  border-color: #ffd54f;
+  border: 1px solid #ffd54f;
+}
+
+/* Badge: Futuro (gris claro) */
+.iobios-badge-excluded {
+  background: #fffde7;
+  color: #666;
+  border: 1px solid #ccc;
+}
+
+/* Contenedor para múltiples badges */
+.iobios-preview-badge:has(> [class*="iobios-badge-"]:nth-child(2)) {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 /* ── Toast ────────────────────────────────────────────────────────────────── */

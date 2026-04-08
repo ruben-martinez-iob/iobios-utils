@@ -67,7 +67,7 @@
       const toDelete   = _s.markedForDelete.has(key);
 
       const isFuture = date > new Date();
-      const naturallyExcluded = (config.rules.skipWeekends && isWeekend) || isHoliday || isVacation || isLeave || isFuture;
+      const naturallyExcluded = isHoliday || isVacation || isLeave || (config.rules.skipWeekends && isWeekend) || isFuture;
       const willInsert = !isExisting && (forced || (!skipped && !naturallyExcluded));
 
       const inSummer = isSummerDate(date, config);
@@ -132,25 +132,44 @@
             <button class="iobios-toggle-btn iobios-toggle-delete" data-date="${key}" title="Marcar para borrar">🗑</button>
           </div>`;
         }
-        // Absence indicator: shown even when the day has an existing timesheet
+        // Absence indicator: shown even when day has an existing timesheet
         if ((isHoliday || isVacation || isLeave || isWeekend) && !forced) {
-          const absenceStatusClass = isLeave    ? 'iobios-status-leave'
-            : isVacation ? 'iobios-status-holiday-absence'
-            : isHoliday  ? 'iobios-status-bank-holiday'
-            : 'iobios-status-weekend';
-          const absenceBadgeLabel = isLeave    ? (leaveDetailMap.get(key) || 'Permiso/Baja')
-            : isVacation ? 'Vacaciones'
-            : isHoliday  ? 'Festivo'
-            : 'Fin de semana';
-          const absenceBadgeClass = isLeave    ? 'iobios-badge-leave'
-            : isVacation ? 'iobios-badge-holiday-absence'
-            : isHoliday  ? 'iobios-badge-bank-holiday'
-            : 'iobios-badge-weekend';
-          const absenceDetail = isHoliday ? (holidayNameMap.get(key) || '') : '';
-          html += `<div class="iobios-preview-row ${absenceStatusClass}">
+          const badges = [];
+          const statusClasses = [];
+          const detailTexts = [];
+          
+          if (isWeekend) {
+            badges.push('<span class="iobios-preview-badge iobios-badge-weekend">Fin de semana</span>');
+            statusClasses.push('iobios-status-weekend');
+          }
+          if (isHoliday) {
+            badges.push('<span class="iobios-preview-badge iobios-badge-bank-holiday">Festivo</span>');
+            statusClasses.push('iobios-status-bank-holiday');
+            detailTexts.push(holidayNameMap.get(key) || '');
+          }
+          if (isVacation) {
+            badges.push('<span class="iobios-preview-badge iobios-badge-holiday-absence">Vacaciones</span>');
+            statusClasses.push('iobios-status-holiday-absence');
+          }
+          if (isLeave) {
+            badges.push('<span class="iobios-preview-badge iobios-badge-leave">' + (leaveDetailMap.get(key) || 'Permiso/Baja') + '</span>');
+            statusClasses.push('iobios-status-leave');
+            detailTexts.push('');
+          }
+          // Solo mostrar Futuro si no hay otros badges específicos
+          if (isFuture && badges.length === 0) {
+            badges.push('<span class="iobios-preview-badge iobios-badge-excluded">Futuro</span>');
+            statusClasses.push('iobios-status-excluded');
+          }
+          
+          const allBadges = badges.join(' ');
+          const allStatusClasses = statusClasses.join(' ');
+          const allDetailTexts = detailTexts.map(text => text ? `<span class="iobios-preview-detail">${text}</span>` : '').join(' ');
+          
+          html += `<div class="iobios-preview-row ${allStatusClasses}">
             <span class="iobios-preview-date iobios-date-continuation"></span>
-            <span class="iobios-preview-badge ${absenceBadgeClass}">${absenceBadgeLabel}</span>
-            ${absenceDetail ? `<span class="iobios-preview-detail">${absenceDetail}</span>` : ''}
+            <span class="iobios-preview-badge">${allBadges}</span>
+            ${allDetailTexts}
           </div>`;
         }
       } else if (willInsert) {
@@ -180,26 +199,43 @@
           <button class="iobios-toggle-btn iobios-toggle-exclude" data-date="${key}" title="Excluir">✕</button>
         </div>`;
       } else {
-        const statusClass = isLeave    ? 'iobios-status-leave'
-          : isVacation ? 'iobios-status-holiday-absence'
-          : isHoliday  ? 'iobios-status-bank-holiday'
-          : isWeekend  ? 'iobios-status-weekend'
-          : 'iobios-status-excluded';
-        const badgeLabel = isLeave    ? (leaveDetailMap.get(key) || 'Permiso/Baja')
-          : isVacation ? 'Vacaciones'
-          : isHoliday  ? 'Festivo'
-          : isWeekend  ? 'Fin de semana'
-          : isFuture   ? 'Futuro' : 'Excluido';
-        const badgeClass = isLeave    ? 'iobios-badge-leave'
-          : isVacation ? 'iobios-badge-holiday-absence'
-          : isHoliday  ? 'iobios-badge-bank-holiday'
-          : isWeekend  ? 'iobios-badge-weekend' : 'iobios-badge-excluded';
-        const detailText = isHoliday ? (holidayNameMap.get(key) || '') : '';
-        html += `<div class="iobios-preview-row ${statusClass}${key === todayKey ? ' iobios-today' : ''}">
+        const badges = [];
+        const statusClasses = [];
+        const detailTexts = [];
+        
+        if (isWeekend) {
+          badges.push('<span class="iobios-preview-badge iobios-badge-weekend">Fin de semana</span>');
+          statusClasses.push('iobios-status-weekend');
+        }
+        if (isHoliday) {
+          badges.push('<span class="iobios-preview-badge iobios-badge-bank-holiday">Festivo</span>');
+          statusClasses.push('iobios-status-bank-holiday');
+          detailTexts.push(holidayNameMap.get(key) || '');
+        }
+        if (isVacation) {
+          badges.push('<span class="iobios-preview-badge iobios-badge-holiday-absence">Vacaciones</span>');
+          statusClasses.push('iobios-status-holiday-absence');
+        }
+        if (isLeave) {
+          badges.push('<span class="iobios-preview-badge iobios-badge-leave">' + (leaveDetailMap.get(key) || 'Permiso/Baja') + '</span>');
+          statusClasses.push('iobios-status-leave');
+          detailTexts.push('');
+        }
+        // Solo mostrar Futuro si no hay otros badges específicos
+        if (isFuture && badges.length === 0) {
+          badges.push('<span class="iobios-preview-badge iobios-badge-excluded">Futuro</span>');
+          statusClasses.push('iobios-status-excluded');
+        }
+        
+        const allBadges = badges.join(' ');
+        const allStatusClasses = statusClasses.join(' ');
+        const allDetailTexts = detailTexts.map(text => text ? `<span class="iobios-preview-detail">${text}</span>` : '').join(' ');
+        
+        html += `<div class="iobios-preview-row ${allStatusClasses}${key === todayKey ? ' iobios-today' : ''}">
           <span class="iobios-preview-date">${window.__iobios.formatDayLabel(date)}</span>
-          <span class="iobios-preview-badge ${badgeClass}">${badgeLabel}</span>
-          ${detailText ? `<span class="iobios-preview-detail">${detailText}</span>` : ''}
-          <button class="iobios-toggle-btn iobios-toggle-include" data-date="${key}" title="Incluir">+</button>
+          <span class="iobios-preview-badge">${allBadges}</span>
+          ${allDetailTexts}
+          <button class="iobios-toggle-btn iobios-toggle-include" data-date="${key}" title="${forced ? 'Quitar inclusión manual' : 'Incluir'}">${forced ? '-' : '+'}</button>
         </div>`;
       }
     }

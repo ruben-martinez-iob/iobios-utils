@@ -119,8 +119,15 @@
       } else if (btn.classList.contains('iobios-toggle-undelete')) {
         _s.markedForDelete.delete(key);
       } else if (btn.classList.contains('iobios-toggle-include')) {
-        _s.manualInclude.add(key);
-        _s.manualExclude.delete(key);
+        // Toggle force-include whole day
+        if (_s.manualInclude.has(key)) {
+          // Already included - remove to restore original state
+          _s.manualInclude.delete(key);
+        } else {
+          // Not included - add to force-include
+          _s.manualInclude.add(key);
+          _s.manualExclude.delete(key);
+        }
       } else if (btn.classList.contains('iobios-toggle-exclude')) {
         _s.manualExclude.add(key);
         _s.manualInclude.delete(key);
