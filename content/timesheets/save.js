@@ -19,40 +19,42 @@
 
     // Deletions
     let deleted = 0, deleteErrors = 0;
-    for (const [, ts] of _s.markedForDelete) {
+    const deletedDates = new Set();
+    for (const [key, ts] of _s.markedForDelete) {
       const res = await window.__iobios.timeSheetsDb.deleteTimesheet(ts);
-      if (res.ok) deleted++; else deleteErrors++;
+      if (res.ok) { deleted++; deletedDates.add(key); }
+      else deleteErrors++;
     }
+    if (deleted > 0) window.__iobios.timeSheetsDb.clearCache();
 
-    // Insertions
-    const [dates, existing, nonWorkingDays] = await Promise.all([
-      window.__iobios.buildDateRange(dateFrom, dateTo, { ...config.rules, skipHolidays: true }, config),
-      window.__iobios.timeSheetsDb.getTimesheets({ dateFrom, dateTo }),
-      window.__iobios.getNonWorkingDays(config),
-    ]);
-    const { vacationSet, leaveSet } = nonWorkingDays;
+    // Insertions — mirror the renderer's willInsert logic using cached data
+    const cached = _s.cachedData;
+    const { allDates, holidaySet, vacationSet, leaveSet } = cached;
+
+    const existing = await window.__iobios.timeSheetsDb.getTimesheets({ dateFrom, dateTo });
     const existingDates = new Set(existing.map(t => t.date.toDateString()));
 
-    const allEligible = dates.filter(d =>
-      !existingDates.has(d.toDateString()) && 
-      !_s.markedForDelete.has(d.toDateString()) &&
-      !_s.manualExclude.has(d.toDateString())
-    );
-    const manualOnly = [..._s.manualInclude]
-      .map(k => new Date(k))
-      .filter(d => !existingDates.has(d.toDateString()) && !allEligible.some(e => e.toDateString() === d.toDateString()));
-
-    const toInsert = [
-      ...manualOnly.filter(d =>
-        !vacationSet.has(d.toDateString()) &&
-        !leaveSet.has(d.toDateString()) &&
-        !_s.manualExclude.has(d.toDateString())
-      ),
-    ];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     let ok = 0, errors = 0;
-    for (const date of toInsert) {
-      const h = _s.customHours.get(date.toDateString()) || config.timeSheets;
+    for (const date of allDates) {
+      const key = date.toDateString();
+      const dow = date.getDay();
+      const isWeekend = dow === 0 || dow === 6;
+      const isFuture = date > today;
+      const naturallyExcluded =
+        holidaySet.has(key) || vacationSet.has(key) || leaveSet.has(key) ||
+        (config.rules.skipWeekends && isWeekend) || isFuture;
+
+      const forced  = _s.manualInclude.has(key);
+      const skipped = _s.manualExclude.has(key);
+      const willInsert = !existingDates.has(key) && !deletedDates.has(key) &&
+        (forced || (!skipped && !naturallyExcluded));
+
+      if (!willInsert) continue;
+
+      const h = _s.customHours.get(key) || config.timeSheets;
       const res = await window.__iobios.timeSheetsDb.createTimesheet(date, h.period1, h.period2);
       if (res.ok) ok++; else errors++;
     }
