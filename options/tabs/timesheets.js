@@ -39,27 +39,43 @@ function updateDerived() {
   derivedInfo.classList.toggle('over-limit', worked > maxMinutes);
 }
 
-function subtractOneHourStr(time) {
+function subtractMinutesStr(time, minutes) {
   if (!time) return '';
   const [h, m] = time.split(':').map(Number);
-  const total = h * 60 + m - 60;
+  const total = h * 60 + m - minutes;
   if (total < 0) return '';
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
 
 function updateSummerInfo() {
   const co2 = document.getElementById('p2-clock-out').value;
-  const summerCo2 = subtractOneHourStr(co2);
   const summerTsInfo = document.getElementById('summer-ts-info');
-  if (!co2 || !summerCo2) {
+
+  const normalHours = parseFloat(document.getElementById('max-hours').value) || 8;
+  const summerHours = parseFloat(document.getElementById('summer-hours').value);
+
+  if (!co2 || isNaN(summerHours) || summerHours >= normalHours) {
     summerTsInfo.textContent = '';
     return;
   }
+
+  const diffMinutes = Math.round((normalHours - summerHours) * 60);
+  const summerCo2 = subtractMinutesStr(co2, diffMinutes);
+
+  if (!summerCo2) {
+    summerTsInfo.textContent = '';
+    return;
+  }
+
+  const diffLabel = minutesToHM(diffMinutes);
   summerTsInfo.textContent =
-    `☀ Durante la jornada de verano la salida de la franja 2 se adelanta 1 hora: ${co2} → ${summerCo2}.`;
+    `☀ Durante la jornada de verano la salida de la franja 2 se adelanta ${diffLabel}: ${co2} → ${summerCo2}.`;
 }
 
 // ── Listeners ──────────────────────────────────────────────────────────────────
 ['p1-clock-in', 'p1-clock-out', 'p2-clock-in', 'p2-clock-out'].forEach((id) => {
   document.getElementById(id).addEventListener('input', () => { updateDerived(); updateSummerInfo(); });
+});
+['max-hours', 'summer-hours'].forEach((id) => {
+  document.getElementById(id).addEventListener('input', updateSummerInfo);
 });
